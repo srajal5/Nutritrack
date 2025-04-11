@@ -103,21 +103,21 @@ const NutrientBreakdownChart = ({ userId = 1 }) => {
               <span className="text-sm font-medium">Protein</span>
               <span className="text-sm font-mono">{proteinPct}%</span>
             </div>
-            <Progress value={proteinPct} className="h-2 bg-neutral-100" indicatorClassName="bg-primary" />
+            <Progress value={proteinPct} className="h-2 bg-neutral-100" />
           </div>
           <div>
             <div className="flex justify-between items-center mb-1">
               <span className="text-sm font-medium">Carbs</span>
               <span className="text-sm font-mono">{carbsPct}%</span>
             </div>
-            <Progress value={carbsPct} className="h-2 bg-neutral-100" indicatorClassName="bg-blue-500" />
+            <Progress value={carbsPct} className="h-2 bg-neutral-100" />
           </div>
           <div>
             <div className="flex justify-between items-center mb-1">
               <span className="text-sm font-medium">Fat</span>
               <span className="text-sm font-mono">{fatPct}%</span>
             </div>
-            <Progress value={fatPct} className="h-2 bg-neutral-100" indicatorClassName="bg-orange-500" />
+            <Progress value={fatPct} className="h-2 bg-neutral-100" />
           </div>
         </div>
       </div>

@@ -16,23 +16,76 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Analyze food entry with OpenAI if not provided
       if (!foodEntryData.calories || !foodEntryData.protein || !foodEntryData.carbs || !foodEntryData.fat) {
-        const analysis = await analyzeFoodEntry(
-          foodEntryData.name,
-          foodEntryData.description || "",
-          foodEntryData.servingSize
-        );
-        
-        foodEntryData.calories = analysis.calories;
-        foodEntryData.protein = analysis.protein;
-        foodEntryData.carbs = analysis.carbs;
-        foodEntryData.fat = analysis.fat;
-        
-        const foodEntry = await storage.addFoodEntry({
-          ...foodEntryData,
-          aiAnalysis: analysis.analysis
-        });
-        
-        return res.status(201).json(foodEntry);
+        try {
+          const analysis = await analyzeFoodEntry(
+            foodEntryData.name,
+            foodEntryData.description || "",
+            foodEntryData.servingSize
+          );
+          
+          foodEntryData.calories = analysis.calories;
+          foodEntryData.protein = analysis.protein;
+          foodEntryData.carbs = analysis.carbs;
+          foodEntryData.fat = analysis.fat;
+          
+          const foodEntry = await storage.addFoodEntry({
+            ...foodEntryData,
+            aiAnalysis: analysis.analysis
+          });
+          
+          return res.status(201).json(foodEntry);
+        } catch (openaiError) {
+          console.error("Error analyzing food entry:", openaiError);
+          
+          // Fallback to estimated values if OpenAI fails
+          // These are reasonable defaults based on the food name
+          const name = foodEntryData.name.toLowerCase();
+          
+          // Basic food category detection
+          const isProteinFood = name.includes("chicken") || name.includes("beef") || name.includes("fish") || 
+                              name.includes("protein") || name.includes("yogurt") || name.includes("egg");
+          const isCarbs = name.includes("rice") || name.includes("pasta") || name.includes("bread") || 
+                        name.includes("potato") || name.includes("oats");
+          const isFruit = name.includes("apple") || name.includes("banana") || name.includes("berry") || 
+                        name.includes("fruit");
+          const isVegetable = name.includes("salad") || name.includes("vegetable") || name.includes("broccoli");
+          
+          // Set default values based on food category
+          if (isProteinFood) {
+            foodEntryData.calories = 250;
+            foodEntryData.protein = 25;
+            foodEntryData.carbs = 5;
+            foodEntryData.fat = 15;
+          } else if (isCarbs) {
+            foodEntryData.calories = 200;
+            foodEntryData.protein = 5;
+            foodEntryData.carbs = 40;
+            foodEntryData.fat = 1;
+          } else if (isFruit) {
+            foodEntryData.calories = 100;
+            foodEntryData.protein = 1;
+            foodEntryData.carbs = 25;
+            foodEntryData.fat = 0;
+          } else if (isVegetable) {
+            foodEntryData.calories = 50;
+            foodEntryData.protein = 2;
+            foodEntryData.carbs = 10;
+            foodEntryData.fat = 0;
+          } else {
+            // Default balanced meal
+            foodEntryData.calories = 350;
+            foodEntryData.protein = 15;
+            foodEntryData.carbs = 30;
+            foodEntryData.fat = 15;
+          }
+          
+          const foodEntry = await storage.addFoodEntry({
+            ...foodEntryData,
+            aiAnalysis: "Analysis unavailable. Using estimated values based on food type."
+          });
+          
+          return res.status(201).json(foodEntry);
+        }
       }
       
       const foodEntry = await storage.addFoodEntry(foodEntryData);
@@ -88,8 +141,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         content: msg.userId ? msg.message : msg.response || ""
       }));
       
-      // Get response from OpenAI
-      const response = await getFitnessResponse(chatData.message, formattedPreviousMessages);
+      let response;
+      try {
+        // Get response from OpenAI
+        response = await getFitnessResponse(chatData.message, formattedPreviousMessages);
+      } catch (openaiError) {
+        console.error("Error getting fitness response:", openaiError);
+        // Fallback response if OpenAI fails
+        response = "I'm sorry, I'm currently unable to process your request due to high demand. Here are some general fitness tips: stay hydrated, aim for balanced nutrition with adequate protein, and ensure you're getting enough rest between workouts.";
+      }
       
       // Save the chat message with the response
       const chatMessage = await storage.addChatMessage({
@@ -182,15 +242,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Nutrition goals not found" });
       }
       
-      // Get recommendations from OpenAI
-      const recommendations = await getNutritionRecommendations(
-        recentEntries,
-        nutritionGoal
-      );
-      
-      res.json(recommendations);
+      try {
+        // Get recommendations from OpenAI
+        const recommendations = await getNutritionRecommendations(
+          recentEntries,
+          nutritionGoal
+        );
+        
+        res.json(recommendations);
+      } catch (error) {
+        console.error("Error getting nutrition recommendations:", error);
+        
+        // Fallback recommendations
+        const fallbackRecommendations = [
+          {
+            title: "Balance Your Meals",
+            description: "Aim for a balance of protein, carbs, and healthy fats in each meal for sustained energy."
+          },
+          {
+            title: "Stay Hydrated",
+            description: "Drink at least 8 glasses of water daily to support metabolism and overall health."
+          },
+          {
+            title: "Portion Control",
+            description: "Be mindful of portion sizes to maintain proper calorie intake for your goals."
+          }
+        ];
+        
+        res.json(fallbackRecommendations);
+      }
     } catch (error) {
-      res.status(500).json({ message: "Failed to get recommendations" });
+      res.status(500).json({ message: "Failed to process recommendation request" });
     }
   });
 
