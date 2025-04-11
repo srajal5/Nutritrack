@@ -23,12 +23,14 @@ const Header = () => {
         </nav>
 
         <div className="flex items-center space-x-4">
-          <Button 
-            variant="default"
-            className="hidden md:block bg-primary hover:bg-primary-dark transition-colors"
-          >
-            Sign Up
-          </Button>
+          <Link href="/auth">
+            <Button 
+              variant="default"
+              className="hidden md:block bg-primary hover:bg-primary-dark transition-colors"
+            >
+              Sign In
+            </Button>
+          </Link>
           <button 
             className="md:hidden"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -47,9 +49,11 @@ const Header = () => {
             <a href="#tracker" className="text-neutral-800 font-medium hover:text-primary transition-colors py-2">Tracker</a>
             <a href="#ai-chat" className="text-neutral-800 font-medium hover:text-primary transition-colors py-2">AI Coach</a>
             <a href="#stats" className="text-neutral-800 font-medium hover:text-primary transition-colors py-2">Stats</a>
-            <Button className="bg-primary hover:bg-primary-dark transition-colors mt-2 w-full">
-              Sign Up
-            </Button>
+            <Link href="/auth">
+              <Button className="bg-primary hover:bg-primary-dark transition-colors mt-2 w-full">
+                Sign In
+              </Button>
+            </Link>
           </nav>
         </div>
       )}
