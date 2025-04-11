@@ -7,17 +7,21 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY || "demo-key" });
 export async function analyzeFoodEntry(
   foodName: string,
   description: string,
-  servingSize: string
+  servingSize: string,
+  imageBase64?: string
 ): Promise<{
   calories: number;
   protein: number;
   carbs: number;
   fat: number;
   analysis: string;
+  ingredients?: string[];
+  healthBenefits?: string[];
+  possibleAllergens?: string[];
 }> {
   try {
-    const prompt = `
-      Analyze the following food entry and provide nutritional information:
+    const promptTemplate = `
+      Analyze the following food entry and provide detailed nutritional information:
       Food Name: ${foodName}
       Description: ${description || "None provided"}
       Serving Size: ${servingSize}
@@ -28,11 +32,42 @@ export async function analyzeFoodEntry(
       3. carbs: grams of carbohydrates (number)
       4. fat: grams of fat (number)
       5. analysis: a brief analysis of this food's nutritional profile (string)
+      6. ingredients: an array of likely ingredients in this food (array of strings)
+      7. healthBenefits: an array of potential health benefits from this food (array of strings)
+      8. possibleAllergens: an array of potential allergens in this food (array of strings)
     `;
+
+    let messages;
+    
+    if (imageBase64) {
+      // If image is provided, use vision capabilities
+      const base64Image = imageBase64.split(",")[1]; // Remove data:image/jpeg;base64, prefix
+      
+      messages = [
+        {
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: `${promptTemplate}\n\nI've provided an image of this food. Please analyze the image to improve your nutritional assessment.`
+            },
+            {
+              type: "image_url",
+              image_url: {
+                url: `data:image/jpeg;base64,${base64Image}`
+              }
+            }
+          ],
+        },
+      ];
+    } else {
+      // Text-only analysis
+      messages = [{ role: "user", content: promptTemplate }];
+    }
 
     const response = await openai.chat.completions.create({
       model: "gpt-4o",
-      messages: [{ role: "user", content: prompt }],
+      messages: messages as any,
       response_format: { type: "json_object" },
     });
 
@@ -44,6 +79,9 @@ export async function analyzeFoodEntry(
       carbs: Number(result.carbs),
       fat: Number(result.fat),
       analysis: result.analysis,
+      ingredients: result.ingredients || [],
+      healthBenefits: result.healthBenefits || [],
+      possibleAllergens: result.possibleAllergens || [],
     };
   } catch (error) {
     console.error("Error analyzing food entry:", error);

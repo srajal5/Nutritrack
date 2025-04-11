@@ -21,10 +21,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Analyze food entry with OpenAI if not provided
       if (!foodEntryData.calories || !foodEntryData.protein || !foodEntryData.carbs || !foodEntryData.fat) {
         try {
+          // Check if image is provided
+          const imageBase64 = foodEntryData.imageUrl as string;
+          
           const analysis = await analyzeFoodEntry(
             foodEntryData.name,
             foodEntryData.description || "",
-            foodEntryData.servingSize
+            foodEntryData.servingSize,
+            imageBase64
           );
           
           foodEntryData.calories = analysis.calories;
@@ -32,9 +36,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
           foodEntryData.carbs = analysis.carbs;
           foodEntryData.fat = analysis.fat;
           
+          // Create a detailed analysis that includes ingredients and health benefits
+          const detailedAnalysis = `
+${analysis.analysis}
+
+Ingredients: ${analysis.ingredients?.join(', ') || 'Not available'}
+
+Health Benefits: ${analysis.healthBenefits?.join(', ') || 'Not available'}
+
+Possible Allergens: ${analysis.possibleAllergens?.join(', ') || 'None detected'}
+          `.trim();
+          
           const foodEntry = await storage.addFoodEntry({
             ...foodEntryData,
-            aiAnalysis: analysis.analysis
+            aiAnalysis: detailedAnalysis
           });
           
           return res.status(201).json(foodEntry);
