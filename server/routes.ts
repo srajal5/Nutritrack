@@ -5,8 +5,12 @@ import { insertChatMessageSchema, insertFoodEntrySchema, insertNutritionGoalSche
 import { analyzeFoodEntry, getFitnessResponse, getNutritionRecommendations } from "./openai";
 import { ZodError } from "zod";
 import { fromZodError } from "zod-validation-error";
+import { setupAuth } from "./auth";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Set up authentication
+  setupAuth(app);
+
   // prefix all routes with /api
   
   // Food Entries API
