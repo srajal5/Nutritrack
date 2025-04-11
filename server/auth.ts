@@ -6,15 +6,12 @@ import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { storage } from "./storage";
 import { User as SelectUser } from "@shared/schema";
-import createMemoryStore from "memorystore";
-
 declare global {
   namespace Express {
     interface User extends SelectUser {}
   }
 }
 
-const MemoryStore = createMemoryStore(session);
 const scryptAsync = promisify(scrypt);
 
 async function hashPassword(password: string) {
@@ -35,9 +32,7 @@ export function setupAuth(app: Express) {
     secret: process.env.SESSION_SECRET || 'nutritrack-secret-key',
     resave: false,
     saveUninitialized: false,
-    store: new MemoryStore({
-      checkPeriod: 86400000, // prune expired entries every 24h
-    }),
+    store: storage.sessionStore,
     cookie: {
       maxAge: 24 * 60 * 60 * 1000, // 24 hours
       httpOnly: true,
