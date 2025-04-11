@@ -16,8 +16,8 @@ async function seedDatabase() {
   
   try {
     // Check if we already have users
-    const existingUsers = await db.select({ count: { count: users.id } }).from(users);
-    if (existingUsers[0].count > 0) {
+    const existingUsers = await db.select().from(users);
+    if (existingUsers.length > 0) {
       console.log("Database already has data. Skipping seed.");
       return;
     }
