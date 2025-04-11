@@ -24,6 +24,10 @@ const foodEntrySchema = z.object({
   description: z.string().optional(),
   servingSize: z.string().min(1, "Serving size is required"),
   mealType: z.enum(["breakfast", "lunch", "dinner", "snack"]),
+  calories: z.number().optional(),
+  protein: z.number().optional(),
+  carbs: z.number().optional(),
+  fat: z.number().optional(),
 });
 
 type FoodEntryFormValues = z.infer<typeof foodEntrySchema>;
