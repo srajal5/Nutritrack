@@ -7,11 +7,19 @@ export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
+  email: text("email"),
+  displayName: text("display_name"),
+  firebaseId: text("firebase_id").unique(),
+  profilePicture: text("profile_picture"),
 });
 
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   password: true,
+  email: true,
+  displayName: true,
+  firebaseId: true,
+  profilePicture: true,
 });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
