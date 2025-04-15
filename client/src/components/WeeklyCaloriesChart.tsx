@@ -1,26 +1,39 @@
 import { useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Chart, BarController, LineController, CategoryScale, LinearScale, BarElement, LineElement, PointElement, Legend, Tooltip } from 'chart.js';
+import { Chart } from 'chart.js/auto';
+import { FoodEntryDocument, NutritionGoalDocument } from '../types';
+import { getQueryFn } from '../lib/queryClient';
+import { useAuth } from '../hooks/use-auth';
 
-Chart.register(BarController, LineController, CategoryScale, LinearScale, BarElement, LineElement, PointElement, Legend, Tooltip);
+interface WeeklyCaloriesResult {
+  results: number[];
+  dayNames: string[];
+}
 
-const WeeklyCaloriesChart = ({ userId = 1 }) => {
+const WeeklyCaloriesChart = () => {
+  const { user } = useAuth();
+  const userId = user?.id;
   const chartRef = useRef<HTMLCanvasElement>(null);
   const chartInstance = useRef<Chart | null>(null);
   
   // Fetch nutrition goals
-  const { data: nutritionGoal } = useQuery({
+  const { data: nutritionGoal } = useQuery<NutritionGoalDocument>({
     queryKey: [`/api/nutrition-goals?userId=${userId}`],
+    queryFn: getQueryFn({ on401: "throw" }),
+    enabled: !!userId
   });
   
   // Fetch food entries
-  const { data: foodEntries } = useQuery({
+  const { data: foodEntries = [] } = useQuery<FoodEntryDocument[]>({
     queryKey: [`/api/food-entries?userId=${userId}`],
+    queryFn: getQueryFn({ on401: "throw" }),
+    enabled: !!userId,
+    initialData: []
   });
   
   // Calculate daily calories for the past week
-  const calculateWeeklyCalories = () => {
-    if (!foodEntries) return Array(7).fill(0);
+  const calculateWeeklyCalories = (): WeeklyCaloriesResult => {
+    if (!foodEntries) return { results: Array(7).fill(0), dayNames: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] };
     
     const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     const today = new Date();
@@ -34,7 +47,7 @@ const WeeklyCaloriesChart = ({ userId = 1 }) => {
     startOfWeek.setHours(0, 0, 0, 0);
     
     foodEntries.forEach((entry) => {
-      const entryDate = new Date(entry.entryDate);
+      const entryDate = new Date(entry.timestamp);
       if (entryDate >= startOfWeek) {
         const dayIndex = Math.floor((entryDate.getTime() - startOfWeek.getTime()) / (24 * 60 * 60 * 1000));
         if (dayIndex >= 0 && dayIndex < 7) {
@@ -43,10 +56,10 @@ const WeeklyCaloriesChart = ({ userId = 1 }) => {
       }
     });
     
-    return results;
+    return { results, dayNames };
   };
   
-  const weeklyCalories = calculateWeeklyCalories();
+  const { results: weeklyCalories, dayNames } = calculateWeeklyCalories();
   const calorieGoal = nutritionGoal?.calorieGoal || 2100;
   
   useEffect(() => {
@@ -64,11 +77,11 @@ const WeeklyCaloriesChart = ({ userId = 1 }) => {
     chartInstance.current = new Chart(ctx, {
       type: 'bar',
       data: {
-        labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+        labels: dayNames,
         datasets: [
           {
             label: 'Calories Consumed',
-            data: weeklyCalories.map(cal => Math.round(cal)),
+            data: weeklyCalories.map((cal: number) => Math.round(cal)),
             backgroundColor: '#4CAF50',
             borderRadius: 6
           },
@@ -90,7 +103,7 @@ const WeeklyCaloriesChart = ({ userId = 1 }) => {
           y: {
             beginAtZero: true,
             grid: {
-              drawBorder: false
+              display: true
             }
           },
           x: {
@@ -113,7 +126,7 @@ const WeeklyCaloriesChart = ({ userId = 1 }) => {
         chartInstance.current.destroy();
       }
     };
-  }, [weeklyCalories, calorieGoal]);
+  }, [weeklyCalories, calorieGoal, dayNames]);
   
   return (
     <div className="bg-white rounded-xl shadow-md p-6">

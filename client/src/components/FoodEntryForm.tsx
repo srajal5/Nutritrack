@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
+import { FoodEntryDocument } from '../types';
 
 import {
   Form,
@@ -35,19 +36,25 @@ const foodEntrySchema = z.object({
 
 type FoodEntryFormValues = z.infer<typeof foodEntrySchema>;
 
+interface FoodEntryFormData extends FoodEntryFormValues {
+  imageUrl?: string;
+}
+
+interface AnalysisResult {
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  aiAnalysis: string;
+}
+
 const FoodEntryForm = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [analysisResult, setAnalysisResult] = useState<{
-    calories: number;
-    protein: number;
-    carbs: number;
-    fat: number;
-    aiAnalysis: string;
-  } | null>(null);
+  const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
   
-  // Initialize the form
+  // Initialize the form with FoodEntryFormValues type
   const form = useForm<FoodEntryFormValues>({
     resolver: zodResolver(foodEntrySchema),
     defaultValues: {
@@ -58,13 +65,13 @@ const FoodEntryForm = () => {
     },
   });
   
-  // Food entry mutation
-  const addFoodEntryMutation = useMutation({
-    mutationFn: async (data: FoodEntryFormValues & { userId: number, imageUrl?: string }) => {
+  // Food entry mutation with proper typing
+  const addFoodEntryMutation = useMutation<FoodEntryDocument, Error, FoodEntryFormData & { userId: number }>({
+    mutationFn: async (data) => {
       const response = await apiRequest('POST', '/api/food-entries', data);
       return response.json();
     },
-    onSuccess: (data) => {
+    onSuccess: (data: FoodEntryDocument) => {
       toast({
         title: 'Food entry added',
         description: 'Your food entry has been successfully analyzed and added.',
@@ -76,7 +83,7 @@ const FoodEntryForm = () => {
         protein: data.protein || 0,
         carbs: data.carbs || 0,
         fat: data.fat || 0,
-        aiAnalysis: data.aiAnalysis || '',
+        aiAnalysis: data.aiAnalysis || '', // This will be handled by the API
       });
       
       // Update form with the actual nutritional data
@@ -113,10 +120,14 @@ const FoodEntryForm = () => {
   
   // Handle form submission
   const onSubmit = (data: FoodEntryFormValues) => {
-    addFoodEntryMutation.mutate({
+    const formData: FoodEntryFormData = {
       ...data,
-      userId: 1, // Use actual user ID in production
       imageUrl: imagePreview || undefined,
+    };
+    
+    addFoodEntryMutation.mutate({
+      ...formData,
+      userId: 1, // Use actual user ID in production
     });
   };
   

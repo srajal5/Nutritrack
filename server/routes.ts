@@ -1,11 +1,27 @@
-import type { Express } from "express";
+import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
-import { storage } from "./storage";
-import { insertChatMessageSchema, insertFoodEntrySchema, insertNutritionGoalSchema } from "@shared/schema";
-import { analyzeFoodEntry, getFitnessResponse, getNutritionRecommendations } from "./openai";
+import storage, { type UserDocument, type FoodEntryInput, type NutritionGoalInput } from "./storage";
 import { ZodError } from "zod";
 import { fromZodError } from "zod-validation-error";
 import { setupAuth } from "./auth";
+import { analyzeFoodEntry, getFitnessResponse, getNutritionRecommendations } from "./openai";
+
+// Extend Express.Request to include user
+declare global {
+  namespace Express {
+    interface Request {
+      user?: UserDocument;
+    }
+  }
+}
+
+// Middleware to ensure user is authenticated
+const ensureAuthenticated = (req: Request, res: Response, next: NextFunction) => {
+  if (req.isAuthenticated() && req.user) {
+    return next();
+  }
+  res.status(401).json({ message: "Unauthorized" });
+};
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Set up authentication
@@ -14,9 +30,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // prefix all routes with /api
   
   // Food Entries API
-  app.post("/api/food-entries", async (req, res) => {
+  app.post("/api/food-entries", ensureAuthenticated, async (req, res) => {
     try {
-      const foodEntryData = insertFoodEntrySchema.parse(req.body);
+      const { name, servingSize, mealType, description, calories, protein, carbs, fat, imageUrl } = req.body;
+      
+      const foodEntryData: FoodEntryInput = {
+        userId: req.user!.id,
+        name,
+        servingSize: servingSize.toString(),
+        mealType,
+        description,
+        calories: Number(calories),
+        protein: Number(protein),
+        carbs: Number(carbs),
+        fat: Number(fat),
+        imageUrl,
+        entryDate: new Date(),
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
       
       // Analyze food entry with OpenAI if not provided
       if (!foodEntryData.calories || !foodEntryData.protein || !foodEntryData.carbs || !foodEntryData.fat) {
@@ -47,7 +79,7 @@ Health Benefits: ${analysis.healthBenefits?.join(', ') || 'Not available'}
 Possible Allergens: ${analysis.possibleAllergens?.join(', ') || 'None detected'}
           `.trim();
           
-          const foodEntry = await storage.addFoodEntry({
+          const foodEntry = await storage.createFoodEntry({
             ...foodEntryData,
             aiAnalysis: detailedAnalysis
           });
@@ -98,7 +130,7 @@ Possible Allergens: ${analysis.possibleAllergens?.join(', ') || 'None detected'}
             foodEntryData.fat = 15;
           }
           
-          const foodEntry = await storage.addFoodEntry({
+          const foodEntry = await storage.createFoodEntry({
             ...foodEntryData,
             aiAnalysis: "Analysis unavailable. Using estimated values based on food type."
           });
@@ -107,7 +139,7 @@ Possible Allergens: ${analysis.possibleAllergens?.join(', ') || 'None detected'}
         }
       }
       
-      const foodEntry = await storage.addFoodEntry(foodEntryData);
+      const foodEntry = await storage.createFoodEntry(foodEntryData);
       res.status(201).json(foodEntry);
     } catch (error) {
       if (error instanceof ZodError) {
@@ -117,89 +149,108 @@ Possible Allergens: ${analysis.possibleAllergens?.join(', ') || 'None detected'}
     }
   });
 
-  app.get("/api/food-entries", async (req, res) => {
+  app.get("/api/food-entries", ensureAuthenticated, async (req, res) => {
     try {
-      const userId = Number(req.query.userId);
-      if (isNaN(userId)) {
-        return res.status(400).json({ message: "Invalid user ID" });
+      if (!req.user) {
+        return res.status(401).json({ message: "User not authenticated" });
       }
-      
-      const foodEntries = await storage.getFoodEntriesByUserId(userId);
-      res.json(foodEntries);
+
+      const foodEntries = await storage.getFoodEntriesByUserId(req.user.id);
+      res.json(foodEntries || []);
     } catch (error) {
-      res.status(500).json({ message: "Failed to fetch food entries" });
+      console.error("Error fetching food entries:", error);
+      res.status(500).json({ 
+        message: "Failed to fetch food entries", 
+        error: error instanceof Error ? error.message : "Unknown error" 
+      });
     }
   });
 
-  app.get("/api/food-entries/daily", async (req, res) => {
+  app.get("/api/food-entries/daily", ensureAuthenticated, async (req, res) => {
     try {
-      const userId = Number(req.query.userId);
-      const dateString = req.query.date as string;
-      
-      if (isNaN(userId)) {
-        return res.status(400).json({ message: "Invalid user ID" });
+      if (!req.user) {
+        return res.status(401).json({ message: "User not authenticated" });
       }
-      
+
+      const dateString = req.query.date as string;
       const date = dateString ? new Date(dateString) : new Date();
-      const dailyEntries = await storage.getDailyFoodEntries(userId, date);
-      res.json(dailyEntries);
+      
+      if (isNaN(date.getTime())) {
+        return res.status(400).json({ message: "Invalid date format" });
+      }
+
+      const dailyEntries = await storage.getDailyFoodEntries(req.user.id, date);
+      res.json(dailyEntries || []);
     } catch (error) {
-      res.status(500).json({ message: "Failed to fetch daily food entries" });
+      console.error("Error fetching daily food entries:", error);
+      res.status(500).json({ 
+        message: "Failed to fetch daily food entries", 
+        error: error instanceof Error ? error.message : "Unknown error" 
+      });
     }
   });
 
   // Chat API
   app.post("/api/chat", async (req, res) => {
     try {
-      const chatData = insertChatMessageSchema.parse(req.body);
-      const previousMessages = await storage.getChatMessagesByConversationId(chatData.conversationId);
+      const { message, conversationId } = req.body;
       
-      // Format previous messages for OpenAI
+      if (!message || !conversationId) {
+        return res.status(400).json({ message: "Message and conversation ID are required" });
+      }
+
+      // Handle both authenticated and anonymous users
+      const userId = req.isAuthenticated() ? req.user?.id : 'anonymous';
+      
+      // Get previous messages for context
+      const previousMessages = await storage.getChatMessagesByConversationId(conversationId);
+      
+      // Format messages for OpenAI
       const formattedPreviousMessages = previousMessages.map(msg => ({
-        role: msg.userId ? "user" : "assistant" as "user" | "assistant",
-        content: msg.userId ? msg.message : msg.response || ""
+        role: msg.userId === userId ? "user" as const : "assistant" as const,
+        content: msg.message
       }));
+
+      // Get AI response
+      const response = await getFitnessResponse(message, formattedPreviousMessages);
       
-      let response;
-      try {
-        // Get response from OpenAI
-        response = await getFitnessResponse(chatData.message, formattedPreviousMessages);
-      } catch (openaiError) {
-        console.error("Error getting fitness response:", openaiError);
-        // Fallback response if OpenAI fails
-        response = "I'm sorry, I'm currently unable to process your request due to high demand. Here are some general fitness tips: stay hydrated, aim for balanced nutrition with adequate protein, and ensure you're getting enough rest between workouts.";
-      }
-      
-      // Save the chat message with the response
-      const chatMessage = await storage.addChatMessage({
-        ...chatData,
-        response
+      // Create chat message with generated ID
+      const chatMessage = await storage.createChatMessage({
+        id: Date.now(), // Simple ID generation
+        userId,
+        message,
+        response,
+        timestamp: new Date(),
+        conversationId,
+        createdAt: new Date(),
+        updatedAt: new Date()
       });
-      
-      res.status(201).json(chatMessage);
+
+      res.json(chatMessage);
     } catch (error) {
-      if (error instanceof ZodError) {
-        return res.status(400).json({ message: fromZodError(error).message });
-      }
+      console.error('Error in chat route:', error);
       res.status(500).json({ message: "Failed to process chat message" });
     }
   });
 
-  app.get("/api/chat/conversations", async (req, res) => {
+  app.get("/api/chat/conversations", ensureAuthenticated, async (req, res) => {
     try {
-      const userId = Number(req.query.userId);
-      if (isNaN(userId)) {
-        return res.status(400).json({ message: "Invalid user ID" });
+      if (!req.user) {
+        return res.status(401).json({ message: "User not authenticated" });
       }
-      
-      const conversations = await storage.getUserConversations(userId);
-      res.json(conversations);
+
+      const conversations = await storage.getUserConversations(req.user.id);
+      res.json(conversations || []);
     } catch (error) {
-      res.status(500).json({ message: "Failed to fetch user conversations" });
+      console.error("Error fetching user conversations:", error);
+      res.status(500).json({ 
+        message: "Failed to fetch user conversations", 
+        error: error instanceof Error ? error.message : "Unknown error" 
+      });
     }
   });
 
-  app.get("/api/chat/messages", async (req, res) => {
+  app.get("/api/chat/messages", ensureAuthenticated, async (req, res) => {
     try {
       const conversationId = req.query.conversationId as string;
       if (!conversationId) {
@@ -214,9 +265,22 @@ Possible Allergens: ${analysis.possibleAllergens?.join(', ') || 'None detected'}
   });
 
   // Nutrition Goals API
-  app.post("/api/nutrition-goals", async (req, res) => {
+  app.post("/api/nutrition-goals", ensureAuthenticated, async (req, res) => {
     try {
-      const goalData = insertNutritionGoalSchema.parse(req.body);
+      if (!req.user) {
+        return res.status(401).json({ message: "User not authenticated" });
+      }
+
+      const goalData: NutritionGoalInput = {
+        userId: req.user.id,
+        calorieGoal: Number(req.body.calorieGoal),
+        proteinGoal: Number(req.body.proteinGoal),
+        carbGoal: Number(req.body.carbGoal),
+        fatGoal: Number(req.body.fatGoal),
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+
       const nutritionGoal = await storage.setNutritionGoal(goalData);
       res.status(201).json(nutritionGoal);
     } catch (error) {
@@ -227,35 +291,53 @@ Possible Allergens: ${analysis.possibleAllergens?.join(', ') || 'None detected'}
     }
   });
 
-  app.get("/api/nutrition-goals", async (req, res) => {
+  app.get("/api/nutrition-goals", ensureAuthenticated, async (req, res) => {
     try {
-      const userId = Number(req.query.userId);
+      if (!req.user) {
+        return res.status(401).json({ message: "User not authenticated" });
+      }
+
+      // Get userId from query parameter or authenticated user
+      const userId = req.query.userId ? Number(req.query.userId) : req.user.id;
+      
       if (isNaN(userId)) {
         return res.status(400).json({ message: "Invalid user ID" });
       }
-      
+
       const nutritionGoal = await storage.getNutritionGoalByUserId(userId);
       if (!nutritionGoal) {
-        return res.status(404).json({ message: "Nutrition goals not found" });
+        // Return default goals if none exist
+        return res.json({
+          userId: userId,
+          calorieGoal: 2000,
+          proteinGoal: 150,
+          carbGoal: 250,
+          fatGoal: 65,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        });
       }
       
       res.json(nutritionGoal);
     } catch (error) {
-      res.status(500).json({ message: "Failed to fetch nutrition goals" });
+      console.error("Error fetching nutrition goals:", error);
+      res.status(500).json({ 
+        message: "Failed to fetch nutrition goals", 
+        error: error instanceof Error ? error.message : "Unknown error" 
+      });
     }
   });
 
   // Recommendations API
-  app.get("/api/recommendations", async (req, res) => {
+  app.get("/api/recommendations", ensureAuthenticated, async (req, res) => {
     try {
-      const userId = Number(req.query.userId);
-      if (isNaN(userId)) {
-        return res.status(400).json({ message: "Invalid user ID" });
+      if (!req.user) {
+        return res.status(401).json({ message: "User not authenticated" });
       }
-      
+
       // Get user's food entries and nutrition goals
-      const recentEntries = await storage.getRecentFoodEntries(userId, 10);
-      const nutritionGoal = await storage.getNutritionGoalByUserId(userId);
+      const recentEntries = await storage.getRecentFoodEntries(req.user.id, 10);
+      const nutritionGoal = await storage.getNutritionGoalByUserId(req.user.id);
       
       if (!nutritionGoal) {
         return res.status(404).json({ message: "Nutrition goals not found" });
@@ -264,7 +346,13 @@ Possible Allergens: ${analysis.possibleAllergens?.join(', ') || 'None detected'}
       try {
         // Get recommendations from OpenAI
         const recommendations = await getNutritionRecommendations(
-          recentEntries,
+          recentEntries.map(entry => ({
+            name: entry.name,
+            calories: entry.calories || 0,
+            protein: entry.protein || 0,
+            carbs: entry.carbs || 0,
+            fat: entry.fat || 0
+          })),
           nutritionGoal
         );
         
@@ -291,12 +379,16 @@ Possible Allergens: ${analysis.possibleAllergens?.join(', ') || 'None detected'}
         res.json(fallbackRecommendations);
       }
     } catch (error) {
-      res.status(500).json({ message: "Failed to process recommendation request" });
+      console.error("Error processing recommendation request:", error);
+      res.status(500).json({ 
+        message: "Failed to process recommendation request", 
+        error: error instanceof Error ? error.message : "Unknown error" 
+      });
     }
   });
 
   // Sample nutrition topics
-  app.get("/api/chat/topics", (req, res) => {
+  app.get("/api/chat/topics", (_req: Request, res: Response) => {
     const topics = [
       "How many calories should I eat to lose weight?",
       "What's a good protein intake for muscle building?",
@@ -306,6 +398,14 @@ Possible Allergens: ${analysis.possibleAllergens?.join(', ') || 'None detected'}
       "How to reduce sugar cravings while dieting?"
     ];
     res.json(topics);
+  });
+
+  app.get("/api/user", (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+    const { password, ...userWithoutPassword } = req.user;
+    res.json(userWithoutPassword);
   });
 
   const httpServer = createServer(app);

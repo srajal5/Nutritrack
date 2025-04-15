@@ -7,21 +7,23 @@ async function throwIfResNotOk(res: Response) {
   }
 }
 
-export async function apiRequest(
+export const apiRequest = async (
   method: string,
-  url: string,
-  data?: unknown | undefined,
-): Promise<Response> {
-  const res = await fetch(url, {
+  path: string,
+  body?: any
+): Promise<Response> => {
+  const res = await fetch(path, {
     method,
-    headers: data ? { "Content-Type": "application/json" } : {},
-    body: data ? JSON.stringify(data) : undefined,
-    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    credentials: "include", // This is important for session cookies
+    body: body ? JSON.stringify(body) : undefined,
   });
 
   await throwIfResNotOk(res);
   return res;
-}
+};
 
 type UnauthorizedBehavior = "returnNull" | "throw";
 export const getQueryFn: <T>(options: {
@@ -40,7 +42,6 @@ export const getQueryFn: <T>(options: {
     await throwIfResNotOk(res);
     return await res.json();
   };
-
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -55,3 +56,4 @@ export const queryClient = new QueryClient({
     },
   },
 });
+

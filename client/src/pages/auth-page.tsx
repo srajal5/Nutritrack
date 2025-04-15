@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "../hooks/use-auth";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -44,6 +44,13 @@ export default function AuthPage() {
   const { user, loginMutation, registerMutation } = useAuth();
   const [activeTab, setActiveTab] = useState<"login" | "register">("login");
   
+  // Handle navigation using useEffect
+  useEffect(() => {
+    if (user) {
+      navigate("/dashboard");
+    }
+  }, [user, navigate]);
+
   const loginForm = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
@@ -56,17 +63,12 @@ export default function AuthPage() {
     resolver: zodResolver(registerSchema),
     defaultValues: {
       username: "",
+      email: "",
       password: "",
       confirmPassword: "",
     },
   });
   
-  // Redirect if already logged in (after all hooks are called)
-  if (user) {
-    navigate("/dashboard");
-    return null;
-  }
-
   const onLoginSubmit = (data: LoginFormValues) => {
     loginMutation.mutate(data);
   };
@@ -178,6 +180,26 @@ export default function AuthPage() {
                             placeholder="desired_username"
                             {...field}
                             autoComplete="username"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={registerForm.control}
+                    name="email"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Email</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="email"
+                            placeholder="your@email.com"
+                            {...field}
+                            value={field.value || ""}
+                            autoComplete="email"
                           />
                         </FormControl>
                         <FormMessage />

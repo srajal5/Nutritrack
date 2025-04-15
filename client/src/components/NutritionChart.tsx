@@ -1,31 +1,50 @@
 import { useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Chart, DoughnutController, ArcElement, Legend, Tooltip } from 'chart.js';
+import { FoodEntryDocument } from '../types';
 
 Chart.register(DoughnutController, ArcElement, Legend, Tooltip);
+
+interface NutritionTotals {
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+}
 
 const NutritionChart = ({ userId = 1 }) => {
   const chartRef = useRef<HTMLCanvasElement>(null);
   const chartInstance = useRef<Chart | null>(null);
   
-  // Fetch today's food entries
-  const { data: todayEntries, isLoading } = useQuery({
+  // Fetch food entries with proper typing
+  const { data: todayEntries = [], isLoading } = useQuery<FoodEntryDocument[]>({
     queryKey: [`/api/food-entries/daily?userId=${userId}`],
+    initialData: []
   });
   
-  // Calculate macronutrient totals
+  // Calculate macronutrient totals and percentages
   const calculateMacros = () => {
     if (!todayEntries || !todayEntries.length) {
-      return { protein: 0, carbs: 0, fat: 0 };
+      return { protein: 0, carbs: 0, fat: 0, proteinPct: 0, carbsPct: 0, fatPct: 0 };
     }
     
-    return todayEntries.reduce((acc, entry) => {
+    const totals = todayEntries.reduce((acc: NutritionTotals, entry: FoodEntryDocument) => {
       return {
+        calories: acc.calories + (entry.calories || 0),
         protein: acc.protein + (entry.protein || 0),
         carbs: acc.carbs + (entry.carbs || 0),
-        fat: acc.fat + (entry.fat || 0),
+        fat: acc.fat + (entry.fat || 0)
       };
-    }, { protein: 0, carbs: 0, fat: 0 });
+    }, { calories: 0, protein: 0, carbs: 0, fat: 0 });
+    
+    const totalCals = totals.protein * 4 + totals.carbs * 4 + totals.fat * 9;
+    
+    return {
+      ...totals,
+      proteinPct: totalCals > 0 ? Math.round((totals.protein * 4 / totalCals) * 100) : 0,
+      carbsPct: totalCals > 0 ? Math.round((totals.carbs * 4 / totalCals) * 100) : 0,
+      fatPct: totalCals > 0 ? Math.round((totals.fat * 9 / totalCals) * 100) : 0,
+    };
   };
   
   const { protein, carbs, fat } = calculateMacros();

@@ -1,24 +1,41 @@
 import { useQuery } from '@tanstack/react-query';
 import { Progress } from '@/components/ui/progress';
+import { FoodEntryDocument, NutritionGoalDocument } from '../types';
+import { getQueryFn } from '../lib/queryClient';
+import { useAuth } from '../hooks/use-auth';
 
-const DailySummary = ({ userId = 1 }) => {
+interface DailyTotals {
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+}
+
+const DailySummary = () => {
+  const { user } = useAuth();
+  const userId = user?.id;
+
   // Fetch nutrition goals
-  const { data: nutritionGoal } = useQuery({
+  const { data: nutritionGoal } = useQuery<NutritionGoalDocument>({
     queryKey: [`/api/nutrition-goals?userId=${userId}`],
+    queryFn: getQueryFn({ on401: "throw" }),
+    enabled: !!userId
   });
 
   // Fetch today's food entries
-  const { data: todayEntries, isLoading } = useQuery({
+  const { data: todayEntries, isLoading } = useQuery<FoodEntryDocument[]>({
     queryKey: [`/api/food-entries/daily?userId=${userId}`],
+    queryFn: getQueryFn({ on401: "throw" }),
+    enabled: !!userId
   });
 
   // Calculate daily totals
-  const calculateDailyTotals = () => {
-    if (!todayEntries || !todayEntries.length) {
+  const calculateDailyTotals = (): DailyTotals => {
+    if (!todayEntries || !Array.isArray(todayEntries) || todayEntries.length === 0) {
       return { calories: 0, protein: 0, carbs: 0, fat: 0 };
     }
     
-    return todayEntries.reduce((acc, entry) => {
+    return todayEntries.reduce<DailyTotals>((acc, entry) => {
       return {
         calories: acc.calories + (entry.calories || 0),
         protein: acc.protein + (entry.protein || 0),
@@ -31,10 +48,10 @@ const DailySummary = ({ userId = 1 }) => {
   const { calories, protein, carbs, fat } = calculateDailyTotals();
   
   // Default goals if not yet loaded
-  const calorieGoal = nutritionGoal?.calorieGoal || 2100;
-  const proteinGoal = nutritionGoal?.proteinGoal || 120;
-  const carbGoal = nutritionGoal?.carbGoal || 230;
-  const fatGoal = nutritionGoal?.fatGoal || 70;
+  const calorieGoal = nutritionGoal?.calorieGoal ?? 2100;
+  const proteinGoal = nutritionGoal?.proteinGoal ?? 120;
+  const carbGoal = nutritionGoal?.carbGoal ?? 230;
+  const fatGoal = nutritionGoal?.fatGoal ?? 70;
   
   // Calculate remaining calories
   const remainingCalories = calorieGoal - calories;

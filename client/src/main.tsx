@@ -13,10 +13,15 @@ style.textContent = `
   
   body {
     font-family: var(--font-body);
+    margin: 0;
+    padding: 0;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
   
   h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-heading);
+    margin: 0;
   }
   
   .font-mono {
@@ -45,4 +50,9 @@ style.textContent = `
 
 document.head.appendChild(style);
 
-createRoot(document.getElementById("root")!).render(<App />);
+const rootElement = document.getElementById("root");
+if (!rootElement) {
+  throw new Error("Root element not found");
+}
+
+createRoot(rootElement).render(<App />);

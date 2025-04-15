@@ -1,12 +1,14 @@
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
+import { FoodEntryDocument } from '../types';
 
 const RecentFoodEntries = ({ userId = 1, limit = 4 }) => {
   const [showAll, setShowAll] = useState(false);
   
   // Fetch food entries
-  const { data: foodEntries, isLoading } = useQuery({
+  const { data: foodEntries = [], isLoading } = useQuery<FoodEntryDocument[]>({
     queryKey: [`/api/food-entries?userId=${userId}`],
+    initialData: []
   });
   
   if (isLoading) {
@@ -74,7 +76,7 @@ const RecentFoodEntries = ({ userId = 1, limit = 4 }) => {
                 <span className="font-mono text-sm">{Math.round(entry.calories)} kcal</span>
               </div>
               <p className="text-sm text-neutral-500">
-                {entry.mealType.charAt(0).toUpperCase() + entry.mealType.slice(1)} · {entry.servingSize}
+                {entry.servingSize}
               </p>
             </div>
           </div>

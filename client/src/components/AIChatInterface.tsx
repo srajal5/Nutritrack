@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import { v4 as uuidv4 } from 'uuid';
@@ -14,7 +14,7 @@ interface ChatMessage {
   timestamp: Date;
 }
 
-const AIChatInterface = ({ userId = 1 }) => {
+const AIChatInterface = () => {
   const { toast } = useToast();
   const [chatInput, setChatInput] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>([
@@ -28,21 +28,10 @@ const AIChatInterface = ({ userId = 1 }) => {
   const [conversationId, setConversationId] = useState(uuidv4());
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
-  // Fetch suggested topics
-  const { data: suggestedTopics } = useQuery({
-    queryKey: ['/api/chat/topics'],
-  });
-  
-  // Fetch conversation history
-  const { data: conversations } = useQuery({
-    queryKey: [`/api/chat/conversations?userId=${userId}`],
-  });
-  
   // Send message mutation
   const sendMessageMutation = useMutation({
     mutationFn: async (message: string) => {
       const response = await apiRequest('POST', '/api/chat', {
-        userId,
         message,
         conversationId,
       });
@@ -62,7 +51,7 @@ const AIChatInterface = ({ userId = 1 }) => {
     onError: (error) => {
       toast({
         title: 'Error sending message',
-        description: error.message || 'There was an error communicating with the AI coach.',
+        description: error instanceof Error ? error.message : 'Failed to send message',
         variant: 'destructive',
       });
     },
@@ -79,7 +68,6 @@ const AIChatInterface = ({ userId = 1 }) => {
     
     if (!chatInput.trim()) return;
     
-    // Add user message to chat
     const userMessage: ChatMessage = {
       id: `user-${Date.now()}`,
       content: chatInput,
@@ -88,71 +76,13 @@ const AIChatInterface = ({ userId = 1 }) => {
     };
     
     setMessages((prev) => [...prev, userMessage]);
-    
-    // Send to API
     sendMessageMutation.mutate(chatInput);
-    
-    // Clear input
     setChatInput('');
-  };
-  
-  // Handle topic suggestion click
-  const handleTopicClick = (topic: string) => {
-    setChatInput(topic);
-  };
-  
-  // Handle conversation selection
-  const loadConversation = async (convoId: string) => {
-    try {
-      const response = await fetch(`/api/chat/messages?conversationId=${convoId}`);
-      const data = await response.json();
-      
-      if (data.length > 0) {
-        setConversationId(convoId);
-        
-        // Format messages
-        const formattedMessages: ChatMessage[] = [
-          {
-            id: '0',
-            content: "Hi there! I'm your AI fitness coach. How can I help you with your nutrition and fitness goals today?",
-            sender: 'ai',
-            timestamp: new Date(),
-          },
-        ];
-        
-        data.forEach((msg: any) => {
-          formattedMessages.push({
-            id: `user-${msg.id}`,
-            content: msg.message,
-            sender: 'user',
-            timestamp: new Date(msg.timestamp),
-          });
-          
-          if (msg.response) {
-            formattedMessages.push({
-              id: `ai-${msg.id}`,
-              content: msg.response,
-              sender: 'ai',
-              timestamp: new Date(msg.timestamp),
-            });
-          }
-        });
-        
-        setMessages(formattedMessages);
-      }
-    } catch (error) {
-      toast({
-        title: 'Error loading conversation',
-        description: 'Failed to load the conversation history.',
-        variant: 'destructive',
-      });
-    }
   };
   
   // Start a new conversation
   const startNewConversation = () => {
-    const newConvoId = uuidv4();
-    setConversationId(newConvoId);
+    setConversationId(uuidv4());
     setMessages([
       {
         id: '0',
@@ -169,7 +99,7 @@ const AIChatInterface = ({ userId = 1 }) => {
         {/* Chat Sidebar */}
         <div className="hidden md:block bg-neutral-100 p-4 border-r border-neutral-200">
           <div className="mb-4">
-            <h3 className="font-heading text-lg font-semibold mb-2">Topic Suggestions</h3>
+            <h3 className="font-heading text-lg font-semibold mb-2">Chat Options</h3>
             <Button
               variant="outline"
               className="w-full text-left p-3 mb-2 bg-white rounded-lg hover:bg-neutral-50 transition text-sm font-medium justify-start"
@@ -180,40 +110,7 @@ const AIChatInterface = ({ userId = 1 }) => {
               </svg>
               New Conversation
             </Button>
-            
-            {suggestedTopics?.map((topic: string, index: number) => (
-              <button 
-                key={index}
-                className="w-full text-left p-3 mb-2 bg-white rounded-lg hover:bg-neutral-50 transition text-sm font-medium"
-                onClick={() => handleTopicClick(topic)}
-              >
-                {topic}
-              </button>
-            ))}
           </div>
-          
-          {conversations && conversations.length > 0 && (
-            <div>
-              <h3 className="font-heading text-lg font-semibold mb-2">Recent Conversations</h3>
-              {conversations.map((convo: any) => (
-                <div 
-                  key={convo.id}
-                  className="p-3 mb-2 border-b border-neutral-200 hover:bg-neutral-50 cursor-pointer transition"
-                  onClick={() => loadConversation(convo.id)}
-                >
-                  <h4 className="font-medium text-sm truncate">{convo.title}</h4>
-                  <p className="text-xs text-neutral-500 truncate">
-                    {new Date(convo.lastMessageDate).toLocaleDateString(undefined, {
-                      month: 'short',
-                      day: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit'
-                    })}
-                  </p>
-                </div>
-              ))}
-            </div>
-          )}
         </div>
         
         {/* Chat Main Area */}

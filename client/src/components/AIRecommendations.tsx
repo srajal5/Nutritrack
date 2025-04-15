@@ -1,9 +1,16 @@
 import { useQuery } from '@tanstack/react-query';
 
+interface Recommendation {
+  id: string;
+  title: string;
+  description: string;
+}
+
 const AIRecommendations = ({ userId = 1 }) => {
   // Fetch AI recommendations
-  const { data: recommendations, isLoading, isError } = useQuery({
+  const { data: recommendations = [], isLoading, isError } = useQuery<Recommendation[]>({
     queryKey: [`/api/recommendations?userId=${userId}`],
+    initialData: []
   });
   
   if (isLoading) {

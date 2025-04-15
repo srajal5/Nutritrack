@@ -10,7 +10,9 @@ const Footer = () => {
               <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-primary" viewBox="0 0 20 20" fill="currentColor">
                 <path fillRule="evenodd" d="M14.243 5.757a6 6 0 10-.986 9.284 1 1 0 111.087 1.678A8 8 0 1118 10a3 3 0 01-3.757-4.243z" clipRule="evenodd" />
               </svg>
-              <h2 className="font-heading font-bold text-2xl ml-2">NutriTrack<span className="text-primary">AI</span></h2>
+              <Link href="/">
+                <h2 className="font-heading font-bold text-2xl ml-2 cursor-pointer">NutriTrack<span className="text-primary">AI</span></h2>
+              </Link>
             </div>
             <p className="text-neutral-400 mb-6">Intelligent nutrition tracking and AI coaching to help you achieve your fitness goals.</p>
             <div className="flex space-x-4">
@@ -35,33 +37,33 @@ const Footer = () => {
           <div>
             <h3 className="font-heading font-semibold text-lg mb-4">Features</h3>
             <ul className="space-y-2">
-              <li><a href="#tracker" className="text-neutral-400 hover:text-white transition-colors">Calorie Tracker</a></li>
-              <li><a href="#tracker" className="text-neutral-400 hover:text-white transition-colors">AI Food Analysis</a></li>
-              <li><a href="#ai-chat" className="text-neutral-400 hover:text-white transition-colors">Fitness Chatbot</a></li>
-              <li><a href="#stats" className="text-neutral-400 hover:text-white transition-colors">Progress Analytics</a></li>
-              <li><a href="#tracker" className="text-neutral-400 hover:text-white transition-colors">Meal Recommendations</a></li>
+              <li><Link href="/tracker" className="text-neutral-400 hover:text-white transition-colors">Calorie Tracker</Link></li>
+              <li><Link href="/tracker" className="text-neutral-400 hover:text-white transition-colors">AI Food Analysis</Link></li>
+              <li><Link href="/ai-chat" className="text-neutral-400 hover:text-white transition-colors">Fitness Chatbot</Link></li>
+              <li><Link href="/stats" className="text-neutral-400 hover:text-white transition-colors">Progress Analytics</Link></li>
+              <li><Link href="/tracker" className="text-neutral-400 hover:text-white transition-colors">Meal Recommendations</Link></li>
             </ul>
           </div>
           
           <div>
             <h3 className="font-heading font-semibold text-lg mb-4">Resources</h3>
             <ul className="space-y-2">
-              <li><a href="#" className="text-neutral-400 hover:text-white transition-colors">Nutrition Articles</a></li>
-              <li><a href="#" className="text-neutral-400 hover:text-white transition-colors">Workout Guides</a></li>
-              <li><a href="#" className="text-neutral-400 hover:text-white transition-colors">Recipe Database</a></li>
-              <li><a href="#" className="text-neutral-400 hover:text-white transition-colors">Fitness Calculators</a></li>
-              <li><a href="#" className="text-neutral-400 hover:text-white transition-colors">Success Stories</a></li>
+              <li><Link href="/articles" className="text-neutral-400 hover:text-white transition-colors">Nutrition Articles</Link></li>
+              <li><Link href="/workouts" className="text-neutral-400 hover:text-white transition-colors">Workout Guides</Link></li>
+              <li><Link href="/recipes" className="text-neutral-400 hover:text-white transition-colors">Recipe Database</Link></li>
+              <li><Link href="/calculators" className="text-neutral-400 hover:text-white transition-colors">Fitness Calculators</Link></li>
+              <li><Link href="/success-stories" className="text-neutral-400 hover:text-white transition-colors">Success Stories</Link></li>
             </ul>
           </div>
           
           <div>
             <h3 className="font-heading font-semibold text-lg mb-4">Company</h3>
             <ul className="space-y-2">
-              <li><a href="#" className="text-neutral-400 hover:text-white transition-colors">About Us</a></li>
-              <li><a href="#" className="text-neutral-400 hover:text-white transition-colors">Contact</a></li>
-              <li><a href="#" className="text-neutral-400 hover:text-white transition-colors">Careers</a></li>
-              <li><a href="#" className="text-neutral-400 hover:text-white transition-colors">Privacy Policy</a></li>
-              <li><a href="#" className="text-neutral-400 hover:text-white transition-colors">Terms of Service</a></li>
+              <li><Link href="/about" className="text-neutral-400 hover:text-white transition-colors">About Us</Link></li>
+              <li><Link href="/contact" className="text-neutral-400 hover:text-white transition-colors">Contact</Link></li>
+              <li><Link href="/careers" className="text-neutral-400 hover:text-white transition-colors">Careers</Link></li>
+              <li><Link href="/privacy" className="text-neutral-400 hover:text-white transition-colors">Privacy Policy</Link></li>
+              <li><Link href="/terms" className="text-neutral-400 hover:text-white transition-colors">Terms of Service</Link></li>
             </ul>
           </div>
         </div>

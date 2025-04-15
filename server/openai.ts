@@ -1,7 +1,7 @@
 import OpenAI from "openai";
 
 // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY || "demo-key" });
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY || "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" });
 
 // Analyze food entry and return nutritional information
 export async function analyzeFoodEntry(
@@ -66,12 +66,16 @@ export async function analyzeFoodEntry(
     }
 
     const response = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-3.5-turbo",
       messages: messages as any,
       response_format: { type: "json_object" },
     });
 
-    const result = JSON.parse(response.choices[0].message.content);
+    const content = response.choices[0].message.content;
+    if (!content) {
+      throw new Error('No content in OpenAI response');
+    }
+    const result = JSON.parse(content);
 
     return {
       calories: Number(result.calories),
@@ -107,12 +111,17 @@ export async function getFitnessResponse(
     ];
 
     const response = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-3.5-turbo",
       messages: messages as any, // TypeScript compatibility
       max_tokens: 500,
+      temperature: 0.7
     });
 
-    return response.choices[0].message.content || "I'm sorry, I couldn't generate a response.";
+    const content = response.choices[0].message.content;
+    if (!content) {
+      throw new Error('No content in OpenAI response');
+    }
+    return content;
   } catch (error) {
     console.error("Error getting fitness response:", error);
     throw new Error("Failed to get fitness response from AI");
@@ -154,12 +163,16 @@ export async function getNutritionRecommendations(
     `;
 
     const response = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-3.5-turbo",
       messages: [{ role: "user", content: prompt }],
       response_format: { type: "json_object" },
     });
 
-    const result = JSON.parse(response.choices[0].message.content);
+    const content = response.choices[0].message.content;
+    if (!content) {
+      throw new Error('No content in OpenAI response');
+    }
+    const result = JSON.parse(content as string);
     return result.recommendations || [];
   } catch (error) {
     console.error("Error getting nutrition recommendations:", error);

@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Chart, PolarAreaController, RadialLinearScale, ArcElement, Tooltip } from 'chart.js';
 import { Progress } from '@/components/ui/progress';
+import { FoodEntryDocument } from '../types';
 
 Chart.register(PolarAreaController, RadialLinearScale, ArcElement, Tooltip);
 
@@ -10,8 +11,9 @@ const NutrientBreakdownChart = ({ userId = 1 }) => {
   const chartInstance = useRef<Chart | null>(null);
   
   // Fetch food entries
-  const { data: todayEntries } = useQuery({
+  const { data: todayEntries = [] } = useQuery<FoodEntryDocument[]>({
     queryKey: [`/api/food-entries/daily?userId=${userId}`],
+    initialData: []
   });
   
   // Calculate macronutrient totals and percentages
@@ -101,21 +103,21 @@ const NutrientBreakdownChart = ({ userId = 1 }) => {
           <div>
             <div className="flex justify-between items-center mb-1">
               <span className="text-sm font-medium">Protein</span>
-              <span className="text-sm font-mono">{proteinPct}%</span>
+              <span className="text-sm font-mono">{protein}g ({proteinPct}%)</span>
             </div>
             <Progress value={proteinPct} className="h-2 bg-neutral-100" />
           </div>
           <div>
             <div className="flex justify-between items-center mb-1">
               <span className="text-sm font-medium">Carbs</span>
-              <span className="text-sm font-mono">{carbsPct}%</span>
+              <span className="text-sm font-mono">{carbs}g ({carbsPct}%)</span>
             </div>
             <Progress value={carbsPct} className="h-2 bg-neutral-100" />
           </div>
           <div>
             <div className="flex justify-between items-center mb-1">
               <span className="text-sm font-medium">Fat</span>
-              <span className="text-sm font-mono">{fatPct}%</span>
+              <span className="text-sm font-mono">{fat}g ({fatPct}%)</span>
             </div>
             <Progress value={fatPct} className="h-2 bg-neutral-100" />
           </div>

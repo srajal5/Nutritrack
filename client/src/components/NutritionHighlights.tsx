@@ -1,14 +1,25 @@
 import { useQuery } from '@tanstack/react-query';
+import { FoodEntryDocument, NutritionGoalDocument } from '../types';
+import { getQueryFn } from '../lib/queryClient';
+import { useAuth } from '../hooks/use-auth';
 
-const NutritionHighlights = ({ userId = 1 }) => {
+const NutritionHighlights = () => {
+  const { user } = useAuth();
+  const userId = user?.id;
+
   // Fetch food entries
-  const { data: foodEntries, isLoading } = useQuery({
+  const { data: foodEntries = [], isLoading } = useQuery<FoodEntryDocument[]>({
     queryKey: [`/api/food-entries?userId=${userId}`],
+    queryFn: getQueryFn({ on401: "throw" }),
+    enabled: !!userId,
+    initialData: []
   });
   
   // Fetch nutrition goals
-  const { data: nutritionGoal } = useQuery({
+  const { data: nutritionGoal } = useQuery<NutritionGoalDocument>({
     queryKey: [`/api/nutrition-goals?userId=${userId}`],
+    queryFn: getQueryFn({ on401: "throw" }),
+    enabled: !!userId
   });
   
   // Calculate highlights
@@ -24,7 +35,7 @@ const NutritionHighlights = ({ userId = 1 }) => {
     
     // Group entries by day
     const entriesByDay = foodEntries.reduce((acc, entry) => {
-      const date = new Date(entry.entryDate).toDateString();
+      const date = new Date(entry.timestamp).toDateString();
       if (!acc[date]) {
         acc[date] = [];
       }

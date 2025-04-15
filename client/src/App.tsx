@@ -8,6 +8,7 @@ import AuthPage from "@/pages/auth-page";
 import { ProtectedRoute } from "./lib/protected-route";
 import { AuthProvider } from "./hooks/use-auth";
 import Dashboard from "./pages/Dashboard"; // We just created this
+import CookieConsent from "./components/CookieConsent";
 
 function Router() {
   return (
@@ -26,6 +27,7 @@ function App() {
       <AuthProvider>
         <Router />
         <Toaster />
+        <CookieConsent />
       </AuthProvider>
     </QueryClientProvider>
   );
