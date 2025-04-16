@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import express, { type Request, Response, NextFunction } from "express";
 import { createServer } from "http";
 import { registerRoutes } from "./routes";
@@ -5,6 +6,10 @@ import { setupVite, serveStatic, log } from "./vite";
 import { connectDB } from "./db";
 import storage from "./storage";
 import mongoose from 'mongoose';
+
+// Log environment variables (without sensitive values)
+console.log('Environment:', process.env.NODE_ENV);
+console.log('OpenAI API Key configured:', !!process.env.OPENAI_API_KEY);
 
 const app = express();
 app.use(express.json());

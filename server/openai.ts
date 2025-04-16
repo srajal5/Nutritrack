@@ -1,7 +1,15 @@
 import OpenAI from "openai";
 
 // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+const openai = new OpenAI({ 
+  apiKey: process.env.OPENAI_API_KEY || 'sk-dummy-key-for-development' 
+});
+
+// Add a check to warn if using a dummy key
+if (!process.env.OPENAI_API_KEY) {
+  console.warn('⚠️ WARNING: OPENAI_API_KEY is not set. Using a dummy key that will not work with OpenAI API.');
+  console.warn('⚠️ Please set the OPENAI_API_KEY environment variable in your .env file.');
+}
 
 // Analyze food entry and return nutritional information
 export async function analyzeFoodEntry(
