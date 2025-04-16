@@ -1,7 +1,7 @@
 import OpenAI from "openai";
 
 // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY || "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" });
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 // Analyze food entry and return nutritional information
 export async function analyzeFoodEntry(
