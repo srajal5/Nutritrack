@@ -53,7 +53,7 @@ const userSchema = new mongoose.Schema({
   password: { type: String, required: true },
   email: { type: String },
   displayName: { type: String },
-  firebaseId: { type: String, unique: true, sparse: true },
+  firebaseId: { type: String, unique: true },
   profilePicture: { type: String }
 }, { timestamps: true });
 
