@@ -45,13 +45,8 @@
     "@types/cors": "^2.8.17",
     "@types/mongodb": "^4.0.6",
     "@types/mongoose": "^5.11.96",
-<<<<<<< HEAD
     "bcrypt": "^5.1.1",
     "chart.js": "^4.4.9",
-=======
-    "bcryptjs": "^2.4.3",
-    "chart.js": "^4.4.8",
->>>>>>> 32ff01aeedaf8f4cac843f6e6f80a85bbd9b942f
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
     "cmdk": "^1.0.0",
