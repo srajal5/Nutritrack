@@ -2,7 +2,7 @@ import 'dotenv/config';
 import express, { type Request, Response, NextFunction } from "express";
 import { createServer } from "http";
 import { registerRoutes } from "./routes";
-import { setupVite, serveStatic, log } from "./vite";
+import { setupVite, log } from "./vite";
 import { connectDB } from "./db";
 import storage from "./storage";
 import mongoose from 'mongoose';
@@ -99,7 +99,12 @@ app.use((req, res, next) => {
     if (app.get("env") === "development") {
       await setupVite(app, server);
     } else {
-      serveStatic(app);
+      // Serve static files from the dist/public directory
+      app.use(express.static('dist/public'));
+      // Serve index.html for all other routes (SPA fallback)
+      app.get('*', (_req, res) => {
+        res.sendFile('dist/public/index.html', { root: '.' });
+      });
     }
 
     // Use different ports for development and production
