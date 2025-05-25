@@ -32,7 +32,10 @@ export const getQueryFn: <T>(options: {
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
     const res = await fetch(queryKey[0] as string, {
-      credentials: "include",
+      credentials: "include", // This is important for session cookies
+      headers: {
+        "Content-Type": "application/json",
+      },
     });
 
     if (unauthorizedBehavior === "returnNull" && res.status === 401) {

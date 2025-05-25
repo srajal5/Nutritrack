@@ -182,7 +182,10 @@ export default function DashboardBackground() {
       <div
         ref={containerRef}
         className="absolute inset-0"
-        style={{ background: 'linear-gradient(to bottom, #1a1a1a, #2a2a2a)' }}
+        style={{ 
+          background: 'linear-gradient(to bottom, var(--background), var(--background))',
+          opacity: 0.5
+        }}
       />
       <div className="absolute inset-0 z-10 flex flex-col">
         <div className="flex-1" />
@@ -190,7 +193,7 @@ export default function DashboardBackground() {
           <HealthStats />
         </div>
         {hoveredItem && (
-          <div className="absolute top-4 right-4 bg-white/10 backdrop-blur-sm p-4 rounded-lg text-white">
+          <div className="absolute top-4 right-4 bg-background/10 backdrop-blur-sm p-4 rounded-lg text-foreground border border-border">
             <p className="text-2xl">{hoveredItem}</p>
             <p className="text-sm opacity-75">
               {hoveredItem === '🍎' && 'Healthy fruits for vitamins'}

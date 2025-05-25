@@ -19,7 +19,7 @@ export function setupAuth(app: Express) {
   const corsOptions = {
     origin: process.env.NODE_ENV === 'production' 
       ? 'https://your-production-domain.com' 
-      : ['http://localhost:5173', 'http://127.0.0.1:5173', 'http://localhost:3000', 'http://127.0.0.1:3000'],
+      : ['http://localhost:5173', 'http://127.0.0.1:5173'],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'Cookie', 'X-Requested-With'],
@@ -38,14 +38,14 @@ export function setupAuth(app: Express) {
     store: MongoStore.create({
       mongoUrl: process.env.MONGODB_URI || 'mongodb://localhost:27017/foodfiness',
       collectionName: 'sessions',
-      ttl: 24 * 60 * 60, // 1 day
+      ttl: 24 * 60 * 60,
       autoRemove: 'native',
-      touchAfter: 24 * 3600 // 24 hours
+      touchAfter: 24 * 3600
     }),
     cookie: {
-      secure: false, // Set to false for development
-      maxAge: 24 * 60 * 60 * 1000, // 1 day
-      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
+      maxAge: 24 * 60 * 60 * 1000,
+      sameSite: 'lax', // Changed from 'strict' to 'lax' for development
       httpOnly: true,
       path: '/'
     },
@@ -54,6 +54,9 @@ export function setupAuth(app: Express) {
 
   app.use(passport.initialize());
   app.use(passport.session());
+
+  // Add session logging middleware AFTER passport initialization
+  
 
   // Updated LocalStrategy with better error handling
   passport.use(
@@ -137,30 +140,41 @@ export function setupAuth(app: Express) {
   });
 
   app.post("/api/login", (req, res, next) => {
-    passport.authenticate("local", (err: Error | null, user: Express.User | false, info: { message: string } | undefined) => {
+    passport.authenticate("local", (err: any, user: any, info: any) => {
+      console.log('Login attempt:', {
+        error: err,
+        user: user ? { id: user.id, username: user.username } : null,
+        info
+      });
+
       if (err) {
         console.error('Login error:', err);
-        return res.status(500).json({ message: "Login failed", error: err.message });
+        return res.status(500).json({ message: 'Login failed' });
       }
+
       if (!user) {
-        return res.status(401).json({ message: info?.message || "Invalid username or password" });
+        return res.status(401).json({ message: 'Invalid credentials' });
       }
-      req.login(user, (err) => {
+
+      req.logIn(user, (err) => {
         if (err) {
-          console.error('Session error:', err);
-          return res.status(500).json({ message: "Session creation failed", error: err.message });
+          console.error('Session creation error:', err);
+          return res.status(500).json({ message: 'Session creation failed' });
         }
-        req.session.save((err) => {
-          if (err) {
-            console.error('Session save error:', err);
-            return res.status(500).json({ message: "Session save failed", error: err.message });
-          }
-          const { password, ...userWithoutPassword } = user;
-          res.status(200).json({ 
-            user: userWithoutPassword, 
-            message: "Login successful",
-            sessionId: req.sessionID 
-          });
+
+        console.log('Session created:', {
+          sessionID: req.sessionID,
+          user: { id: user.id, username: user.username }
+        });
+
+        return res.json({
+          user: {
+            id: user.id,
+            username: user.username,
+            email: user.email,
+            displayName: user.displayName
+          },
+          sessionID: req.sessionID
         });
       });
     })(req, res, next);

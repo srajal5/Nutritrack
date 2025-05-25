@@ -1,121 +1,79 @@
-import { useQuery } from '@tanstack/react-query';
-import { Progress } from '@/components/ui/progress';
-import { FoodEntryDocument, NutritionGoalDocument } from '../types';
-import { getQueryFn } from '../lib/queryClient';
-import { useAuth } from '../hooks/use-auth';
+import { useDashboardData } from "../hooks/use-dashboard-data";
+import { motion } from "framer-motion";
+import { Progress } from "./ui/progress";
 
-interface DailyTotals {
-  calories: number;
-  protein: number;
-  carbs: number;
-  fat: number;
-}
+export default function DailySummary() {
+  const { dailySummary, nutritionGoals, isLoading } = useDashboardData();
 
-const DailySummary = () => {
-  const { user } = useAuth();
-  const userId = user?.id;
-
-  // Fetch nutrition goals
-  const { data: nutritionGoal } = useQuery<NutritionGoalDocument>({
-    queryKey: [`/api/nutrition-goals?userId=${userId}`],
-    queryFn: getQueryFn({ on401: "throw" }),
-    enabled: !!userId
-  });
-
-  // Fetch today's food entries
-  const { data: todayEntries, isLoading } = useQuery<FoodEntryDocument[]>({
-    queryKey: [`/api/food-entries/daily?userId=${userId}`],
-    queryFn: getQueryFn({ on401: "throw" }),
-    enabled: !!userId
-  });
-
-  // Calculate daily totals
-  const calculateDailyTotals = (): DailyTotals => {
-    if (!todayEntries || !Array.isArray(todayEntries) || todayEntries.length === 0) {
-      return { calories: 0, protein: 0, carbs: 0, fat: 0 };
-    }
-    
-    return todayEntries.reduce<DailyTotals>((acc, entry) => {
-      return {
-        calories: acc.calories + (entry.calories || 0),
-        protein: acc.protein + (entry.protein || 0),
-        carbs: acc.carbs + (entry.carbs || 0),
-        fat: acc.fat + (entry.fat || 0),
-      };
-    }, { calories: 0, protein: 0, carbs: 0, fat: 0 });
-  };
-
-  const { calories, protein, carbs, fat } = calculateDailyTotals();
-  
-  // Default goals if not yet loaded
-  const calorieGoal = nutritionGoal?.calorieGoal ?? 2100;
-  const proteinGoal = nutritionGoal?.proteinGoal ?? 120;
-  const carbGoal = nutritionGoal?.carbGoal ?? 230;
-  const fatGoal = nutritionGoal?.fatGoal ?? 70;
-  
-  // Calculate remaining calories
-  const remainingCalories = calorieGoal - calories;
-  
-  // Calculate progress percentages
-  const caloriePercentage = Math.min(100, Math.round((calories / calorieGoal) * 100));
-
-  if (isLoading) {
+  if (isLoading || !dailySummary || !nutritionGoals) {
     return (
-      <div className="bg-white rounded-xl shadow-md p-6 animate-pulse">
-        <div className="h-6 bg-slate-200 rounded mb-4"></div>
-        <div className="space-y-4">
-          <div className="h-10 bg-slate-200 rounded"></div>
-          <div className="h-4 bg-slate-200 rounded"></div>
-          <div className="grid grid-cols-3 gap-2">
-            <div className="h-16 bg-slate-200 rounded"></div>
-            <div className="h-16 bg-slate-200 rounded"></div>
-            <div className="h-16 bg-slate-200 rounded"></div>
-          </div>
+      <div className="space-y-4">
+        <div className="h-4 w-1/3 bg-white/10 rounded animate-pulse" />
+        <div className="space-y-2">
+          <div className="h-4 w-full bg-white/10 rounded animate-pulse" />
+          <div className="h-4 w-2/3 bg-white/10 rounded animate-pulse" />
         </div>
       </div>
     );
   }
 
+  const calorieProgress = (dailySummary.totalCalories / nutritionGoals.dailyCalories) * 100;
+  const proteinProgress = (dailySummary.protein / nutritionGoals.protein) * 100;
+  const carbsProgress = (dailySummary.carbs / nutritionGoals.carbs) * 100;
+  const fatProgress = (dailySummary.fat / nutritionGoals.fat) * 100;
+
   return (
-    <div className="bg-white rounded-xl shadow-md p-6">
-      <h3 className="font-heading text-xl font-semibold mb-4">Today's Summary</h3>
-      
-      <div className="flex justify-between mb-4">
-        <div>
-          <p className="text-sm text-neutral-500">Daily Goal</p>
-          <p className="font-mono text-xl font-semibold">{calorieGoal.toLocaleString()} <span className="text-sm font-normal">kcal</span></p>
+    <div className="space-y-6">
+      <div className="space-y-2">
+        <div className="flex justify-between items-center">
+          <span className="text-white/70">Daily Calories</span>
+          <span className="text-white font-medium">
+            {dailySummary.totalCalories} / {nutritionGoals.dailyCalories} kcal
+          </span>
         </div>
-        <div>
-          <p className="text-sm text-neutral-500">Consumed</p>
-          <p className="font-mono text-xl font-semibold">{Math.round(calories).toLocaleString()} <span className="text-sm font-normal">kcal</span></p>
+        <Progress value={calorieProgress} className="h-2" />
+      </div>
+
+      <div className="grid grid-cols-3 gap-4">
+        <div className="space-y-2">
+          <div className="flex justify-between items-center">
+            <span className="text-white/70">Protein</span>
+            <span className="text-white font-medium">
+              {dailySummary.protein}g
+            </span>
+          </div>
+          <Progress value={proteinProgress} className="h-2" />
         </div>
-        <div>
-          <p className="text-sm text-neutral-500">Remaining</p>
-          <p className="font-mono text-xl font-semibold text-primary">{Math.max(0, Math.round(remainingCalories)).toLocaleString()} <span className="text-sm font-normal">kcal</span></p>
+
+        <div className="space-y-2">
+          <div className="flex justify-between items-center">
+            <span className="text-white/70">Carbs</span>
+            <span className="text-white font-medium">
+              {dailySummary.carbs}g
+            </span>
+          </div>
+          <Progress value={carbsProgress} className="h-2" />
+        </div>
+
+        <div className="space-y-2">
+          <div className="flex justify-between items-center">
+            <span className="text-white/70">Fat</span>
+            <span className="text-white font-medium">
+              {dailySummary.fat}g
+            </span>
+          </div>
+          <Progress value={fatProgress} className="h-2" />
         </div>
       </div>
-      
-      <Progress 
-        value={caloriePercentage} 
-        className="h-4 mb-6" 
-      />
-      
-      <div className="grid grid-cols-3 gap-2 text-center">
-        <div className="bg-neutral-50 rounded-lg p-3">
-          <p className="text-xs text-neutral-500 mb-1">Protein</p>
-          <p className="font-mono font-medium">{Math.round(protein)}g <span className="text-xs font-normal text-neutral-500">/{proteinGoal}g</span></p>
-        </div>
-        <div className="bg-neutral-50 rounded-lg p-3">
-          <p className="text-xs text-neutral-500 mb-1">Carbs</p>
-          <p className="font-mono font-medium">{Math.round(carbs)}g <span className="text-xs font-normal text-neutral-500">/{carbGoal}g</span></p>
-        </div>
-        <div className="bg-neutral-50 rounded-lg p-3">
-          <p className="text-xs text-neutral-500 mb-1">Fat</p>
-          <p className="font-mono font-medium">{Math.round(fat)}g <span className="text-xs font-normal text-neutral-500">/{fatGoal}g</span></p>
+
+      <div className="pt-4 border-t border-white/10">
+        <div className="flex justify-between items-center">
+          <span className="text-white/70">Remaining Calories</span>
+          <span className={`font-medium ${dailySummary.remainingCalories > 0 ? 'text-green-400' : 'text-red-400'}`}>
+            {dailySummary.remainingCalories} kcal
+          </span>
         </div>
       </div>
     </div>
   );
-};
-
-export default DailySummary;
+}

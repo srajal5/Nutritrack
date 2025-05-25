@@ -1,10 +1,13 @@
-import type { Express, Request, Response, NextFunction } from "express";
+import type { Express, NextFunction, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import storage, { type UserDocument, type FoodEntryInput, type NutritionGoalInput } from "./storage";
 import { ZodError } from "zod";
 import { fromZodError } from "zod-validation-error";
 import { setupAuth } from "./auth";
 import { analyzeFoodEntry, getFitnessResponse, getNutritionRecommendations } from "./openai";
+import foodEntriesRouter from './routes/food-entries';
+import nutritionGoalsRouter from './routes/nutrition-goals';
+import mongoose from 'mongoose';
 
 // Extend Express.Request to include user
 declare global {
@@ -16,11 +19,18 @@ declare global {
 }
 
 // Middleware to ensure user is authenticated
-const ensureAuthenticated = (req: Request, res: Response, next: NextFunction) => {
-  if (req.isAuthenticated() && req.user) {
+export const ensureAuthenticated = (req: Request, res: Response, next: NextFunction) => {
+  console.log('Auth check:', {
+    isAuthenticated: req.isAuthenticated(),
+    sessionID: req.sessionID,
+    user: req.user,
+    cookies: req.headers.cookie
+  });
+  
+  if (req.isAuthenticated()) {
     return next();
   }
-  res.status(401).json({ message: "Unauthorized" });
+  return res.status(401).json({ message: "Not authenticated" });
 };
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -34,8 +44,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { name, servingSize, mealType, description, calories, protein, carbs, fat, imageUrl } = req.body;
       
+      // Ensure we have a valid user ID
+      if (!req.user?.id) {
+        return res.status(401).json({ error: "User not authenticated" });
+      }
+
+      // First, get the user document to get the MongoDB _id
+      const user = await storage.getUser(req.user.id);
+      if (!user) {
+        return res.status(401).json({ error: "User not found" });
+      }
+
+      // Use the MongoDB _id for the userId field
       const foodEntryData: FoodEntryInput = {
-        userId: req.user!.id,
+        userId: user._id as mongoose.Types.ObjectId, // Cast to ObjectId
         name,
         servingSize: servingSize.toString(),
         mealType,
@@ -45,9 +67,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         carbs: Number(carbs),
         fat: Number(fat),
         imageUrl,
-        entryDate: new Date(),
-        createdAt: new Date(),
-        updatedAt: new Date()
+        entryDate: new Date()
       };
       
       // Analyze food entry with OpenAI if not provided
@@ -129,23 +149,15 @@ Possible Allergens: ${analysis.possibleAllergens?.join(', ') || 'None detected'}
             foodEntryData.carbs = 30;
             foodEntryData.fat = 15;
           }
-          
-          const foodEntry = await storage.createFoodEntry({
-            ...foodEntryData,
-            aiAnalysis: "Analysis unavailable. Using estimated values based on food type."
-          });
-          
-          return res.status(201).json(foodEntry);
         }
       }
       
+      // Create the food entry with either AI analysis or fallback values
       const foodEntry = await storage.createFoodEntry(foodEntryData);
       res.status(201).json(foodEntry);
     } catch (error) {
-      if (error instanceof ZodError) {
-        return res.status(400).json({ message: fromZodError(error).message });
-      }
-      res.status(500).json({ message: "Failed to add food entry" });
+      console.error("Error adding food entry:", error);
+      res.status(500).json({ error: "Failed to add food entry" });
     }
   });
 
@@ -155,7 +167,7 @@ Possible Allergens: ${analysis.possibleAllergens?.join(', ') || 'None detected'}
         return res.status(401).json({ message: "User not authenticated" });
       }
 
-      const foodEntries = await storage.getFoodEntriesByUserId(req.user.id);
+      const foodEntries = await storage.getFoodEntriesByUserId(new mongoose.Types.ObjectId(req.user.id.toString()));
       res.json(foodEntries || []);
     } catch (error) {
       console.error("Error fetching food entries:", error);
@@ -179,7 +191,7 @@ Possible Allergens: ${analysis.possibleAllergens?.join(', ') || 'None detected'}
         return res.status(400).json({ message: "Invalid date format" });
       }
 
-      const dailyEntries = await storage.getDailyFoodEntries(req.user.id, date);
+      const dailyEntries = await storage.getDailyFoodEntries(new mongoose.Types.ObjectId(req.user.id.toString()), date);
       res.json(dailyEntries || []);
     } catch (error) {
       console.error("Error fetching daily food entries:", error);
@@ -207,7 +219,7 @@ Possible Allergens: ${analysis.possibleAllergens?.join(', ') || 'None detected'}
       
       // Format messages for OpenAI
       const formattedPreviousMessages = previousMessages.map(msg => ({
-        role: msg.userId === userId ? "user" as const : "assistant" as const,
+        role: msg.userId.toString() === userId.toString() ? "user" as const : "assistant" as const,
         content: msg.message
       }));
 
@@ -272,13 +284,11 @@ Possible Allergens: ${analysis.possibleAllergens?.join(', ') || 'None detected'}
       }
 
       const goalData: NutritionGoalInput = {
-        userId: req.user.id,
+        userId: new mongoose.Types.ObjectId(req.user.id.toString()),
         calorieGoal: Number(req.body.calorieGoal),
         proteinGoal: Number(req.body.proteinGoal),
         carbGoal: Number(req.body.carbGoal),
-        fatGoal: Number(req.body.fatGoal),
-        createdAt: new Date(),
-        updatedAt: new Date()
+        fatGoal: Number(req.body.fatGoal)
       };
 
       const nutritionGoal = await storage.setNutritionGoal(goalData);
@@ -304,7 +314,7 @@ Possible Allergens: ${analysis.possibleAllergens?.join(', ') || 'None detected'}
         return res.status(400).json({ message: "Invalid user ID" });
       }
 
-      const nutritionGoal = await storage.getNutritionGoalByUserId(userId);
+      const nutritionGoal = await storage.getNutritionGoalByUserId(new mongoose.Types.ObjectId(userId.toString()));
       if (!nutritionGoal) {
         // Return default goals if none exist
         return res.json({
@@ -336,8 +346,8 @@ Possible Allergens: ${analysis.possibleAllergens?.join(', ') || 'None detected'}
       }
 
       // Get user's food entries and nutrition goals
-      const recentEntries = await storage.getRecentFoodEntries(req.user.id, 10);
-      const nutritionGoal = await storage.getNutritionGoalByUserId(req.user.id);
+      const recentEntries = await storage.getRecentFoodEntries(new mongoose.Types.ObjectId(req.user.id.toString()), 10);
+      const nutritionGoal = await storage.getNutritionGoalByUserId(new mongoose.Types.ObjectId(req.user.id.toString()));
       
       if (!nutritionGoal) {
         return res.status(404).json({ message: "Nutrition goals not found" });
@@ -406,6 +416,17 @@ Possible Allergens: ${analysis.possibleAllergens?.join(', ') || 'None detected'}
     }
     const { password, ...userWithoutPassword } = req.user;
     res.json(userWithoutPassword);
+  });
+
+  // Food entries routes
+  app.use('/api/food-entries', foodEntriesRouter);
+
+  // Nutrition goals routes
+  app.use('/api/nutrition-goals', nutritionGoalsRouter);
+
+  // Health check route
+  app.get('/health', (_req, res) => {
+    res.json({ status: 'ok' });
   });
 
   const httpServer = createServer(app);

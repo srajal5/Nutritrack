@@ -8,7 +8,9 @@ import AuthPage from "@/pages/auth-page";
 import { ProtectedRoute } from "./lib/protected-route";
 import { AuthProvider } from "./hooks/use-auth";
 import Dashboard from "./pages/Dashboard"; // We just created this
+import Profile from "./pages/Profile";
 import CookieConsent from "./components/CookieConsent";
+import { ThemeProvider } from "./components/ThemeProvider";
 
 function Router() {
   return (
@@ -16,6 +18,7 @@ function Router() {
       <Route path="/" component={Home} />
       <Route path="/auth" component={AuthPage} />
       <ProtectedRoute path="/dashboard" component={Dashboard} />
+      <ProtectedRoute path="/profile" component={Profile} />
       <Route component={NotFound} />
     </Switch>
   );
@@ -23,13 +26,15 @@ function Router() {
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <Router />
-        <Toaster />
-        <CookieConsent />
-      </AuthProvider>
-    </QueryClientProvider>
+    <ThemeProvider defaultTheme="system" storageKey="nutritrack-theme">
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <Router />
+          <Toaster />
+          <CookieConsent />
+        </AuthProvider>
+      </QueryClientProvider>
+    </ThemeProvider>
   );
 }
 

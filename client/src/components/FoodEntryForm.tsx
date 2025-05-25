@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import { FoodEntryDocument } from '../types';
+import { useAuth } from '@/hooks/use-auth';
 
 import {
   Form,
@@ -51,6 +52,7 @@ interface AnalysisResult {
 const FoodEntryForm = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
   
@@ -120,6 +122,15 @@ const FoodEntryForm = () => {
   
   // Handle form submission
   const onSubmit = (data: FoodEntryFormValues) => {
+    if (!user) {
+      toast({
+        title: 'Authentication error',
+        description: 'You must be logged in to add food entries.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
     const formData: FoodEntryFormData = {
       ...data,
       imageUrl: imagePreview || undefined,
@@ -127,7 +138,7 @@ const FoodEntryForm = () => {
     
     addFoodEntryMutation.mutate({
       ...formData,
-      userId: 1, // Use actual user ID in production
+      userId: user.id,
     });
   };
   
