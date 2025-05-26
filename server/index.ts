@@ -99,11 +99,11 @@ app.use((req, res, next) => {
     if (app.get("env") === "development") {
       await setupVite(app, server);
     } else {
-      // Serve static files from the dist/public directory
-      app.use(express.static('dist/public'));
+      // Serve static files from the dist directory
+      app.use(express.static('dist'));
       // Serve index.html for all other routes (SPA fallback)
       app.get('*', (_req, res) => {
-        res.sendFile('dist/public/index.html', { root: '.' });
+        res.sendFile('dist/index.html', { root: '.' });
       });
     }
 
