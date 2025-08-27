@@ -13,7 +13,7 @@ export interface IUser {
 }
 
 export interface IFoodEntry {
-  userId: mongoose.Types.ObjectId;
+  userId: number;
   name: string;
   description?: string;
   servingSize: string;
@@ -29,7 +29,7 @@ export interface IFoodEntry {
 }
 
 export interface IChatMessage {
-  userId: mongoose.Types.ObjectId;
+  userId: number;
   message: string;
   response?: string;
   conversationId: string;
@@ -38,7 +38,7 @@ export interface IChatMessage {
 }
 
 export interface INutritionGoal {
-  userId: mongoose.Types.ObjectId;
+  userId: number;
   calorieGoal: number;
   proteinGoal: number;
   carbGoal: number;
@@ -59,7 +59,7 @@ const userSchema = new mongoose.Schema({
 
 // Food Entry Schema
 const foodEntrySchema = new mongoose.Schema({
-  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  userId: { type: Number, required: true },
   name: { type: String, required: true },
   description: { type: String },
   servingSize: { type: String, required: true },
@@ -74,7 +74,7 @@ const foodEntrySchema = new mongoose.Schema({
 
 // Chat Message Schema
 const chatMessageSchema = new mongoose.Schema({
-  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  userId: { type: Number, required: true },
   message: { type: String, required: true },
   response: { type: String },
   conversationId: { type: String, required: true }
@@ -82,7 +82,7 @@ const chatMessageSchema = new mongoose.Schema({
 
 // Nutrition Goal Schema
 const nutritionGoalSchema = new mongoose.Schema({
-  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, unique: true },
+  userId: { type: Number, required: true, unique: true },
   calorieGoal: { type: Number, required: true },
   proteinGoal: { type: Number, required: true },
   carbGoal: { type: Number, required: true },

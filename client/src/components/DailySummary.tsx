@@ -1,5 +1,4 @@
 import { useDashboardData } from "../hooks/use-dashboard-data";
-import { motion } from "framer-motion";
 import { Progress } from "./ui/progress";
 
 export default function DailySummary() {

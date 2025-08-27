@@ -71,7 +71,7 @@ app.use((req, res, next) => {
     if (mongoose.connection.readyState !== 1) {
       throw new Error('MongoDB connection failed');
     }
-    console.log('MongoDB connected successfully');
+    
 
     // Verify storage instance is properly initialized
     if (!storage || typeof storage.getUserByUsername !== 'function') {
@@ -99,16 +99,16 @@ app.use((req, res, next) => {
     if (app.get("env") === "development") {
       await setupVite(app, server);
     } else {
-      // Serve static files from the dist directory
-      app.use(express.static('dist'));
+      // Serve static files from the dist/public directory
+      app.use(express.static('dist/public'));
       // Serve index.html for all other routes (SPA fallback)
       app.get('*', (_req, res) => {
-        res.sendFile('dist/index.html', { root: '.' });
+        res.sendFile('dist/public/index.html', { root: '.' });
       });
     }
 
-    // Use different ports for development and production
-    const port = process.env.NODE_ENV === 'production' ? 3001 : 3000;
+    // Use different ports for development and production, with environment variable override
+    const port = parseInt(process.env.PORT || (process.env.NODE_ENV === 'production' ? '3001' : '3001'), 10);
     server.listen(port, () => {
       log(`serving on port ${port}`);
     });

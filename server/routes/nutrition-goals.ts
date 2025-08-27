@@ -50,7 +50,7 @@ router.put('/', ensureAuthenticated, async (req, res) => {
     const validatedData = nutritionGoalsSchema.parse(req.body);
     const goals = await storage.setNutritionGoal({
       ...validatedData,
-      userId: new mongoose.Types.ObjectId(userId.toString())
+      userId: userId
     });
     
     res.json(goals);

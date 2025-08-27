@@ -4,7 +4,7 @@ import {
   useMutation,
   UseMutationResult,
 } from "@tanstack/react-query";
-import { User as SelectUser, InsertUser } from "@shared/schema";
+import { User as SelectUser, InsertUser } from "../types";
 import { apiRequest, queryClient } from "../lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { getQueryFn } from "../lib/queryClient";
@@ -39,24 +39,86 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const loginMutation = useMutation<SelectUser, Error, LoginData>({
     mutationFn: async (credentials: LoginData) => {
-      const res = await apiRequest("POST", "/api/login", credentials);
-      const data = await res.json();
-      return data.user; // Extract user from the nested response
+      try {
+        console.log('Attempting login with credentials:', {
+          username: credentials.username,
+          password: '[REDACTED]'
+        });
+
+        const res = await apiRequest("POST", "/api/login", credentials);
+        console.log('Login response received:', {
+          status: res.status,
+          ok: res.ok,
+          headers: Object.fromEntries(res.headers.entries())
+        });
+
+        const data = await res.json();
+        console.log('Login data received:', {
+          hasUser: !!data.user,
+          sessionID: data.sessionID
+        });
+        
+        if (!data.user) {
+          throw new Error('No user data received');
+        }
+
+        return data.user;
+      } catch (error) {
+        console.error('Login error details:', {
+          error,
+          message: error instanceof Error ? error.message : 'Unknown error',
+          status: error instanceof Error && 'status' in error ? (error as any).status : undefined
+        });
+        
+        // If it's an API error, use its message
+        if (error instanceof Error && 'data' in error) {
+          const apiError = error as { data: { message: string } };
+          throw new Error(apiError.data.message || 'Login failed');
+        }
+        throw error;
+      }
     },
     onSuccess: (user: SelectUser) => {
+      console.log('Login successful:', {
+        userId: user.id,
+        username: user.username
+      });
+
+      // Clear all existing queries
+      queryClient.clear();
+      
+      // Set the new user data
       queryClient.setQueryData(["/api/user"], user);
+      
+      // Invalidate and refetch any necessary queries
+      queryClient.invalidateQueries({ queryKey: ["/api/food-entries"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/nutrition-goals"] });
+      
       toast({
         title: "Login successful",
         description: "Welcome back!",
       });
     },
     onError: (error: Error) => {
+      console.error('Login mutation error:', {
+        message: error.message,
+        stack: error.stack
+      });
+
+      // Clear user data on error
+      queryClient.setQueryData(["/api/user"], null);
+      
+      // Clear all queries
+      queryClient.clear();
+      
       toast({
         title: "Login failed",
         description: error.message,
         variant: "destructive",
       });
     },
+    retry: 1,
+    retryDelay: 1000,
   });
 
   const registerMutation = useMutation<SelectUser, Error, InsertUser>({
@@ -85,7 +147,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await apiRequest("POST", "/api/logout");
     },
     onSuccess: () => {
+      queryClient.clear();
       queryClient.setQueryData(["/api/user"], null);
+      queryClient.removeQueries({ queryKey: ["/api/food-entries"] });
+      queryClient.removeQueries({ queryKey: ["/api/nutrition-goals"] });
       toast({
         title: "Logged out",
         description: "You have been logged out successfully",

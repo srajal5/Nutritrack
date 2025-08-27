@@ -11,6 +11,37 @@ if (!process.env.OPENAI_API_KEY) {
   console.warn('⚠️ Please set the OPENAI_API_KEY environment variable in your .env file.');
 }
 
+// Enhanced system message for better fitness coaching
+const ENHANCED_FITNESS_SYSTEM_MESSAGE = `You are an expert fitness and nutrition coach with deep knowledge of exercise science, nutrition, and behavior change. Your role is to provide:
+
+1. **Personalized Guidance**: Tailor advice to individual goals, fitness levels, and preferences
+2. **Step-by-Step Instructions**: Provide clear, actionable steps for implementation
+3. **Evidence-Based Recommendations**: Base all advice on scientific research and best practices
+4. **Motivational Support**: Encourage and inspire while being realistic about expectations
+5. **Safety First**: Always prioritize safety and injury prevention
+6. **Progressive Approach**: Suggest gradual improvements rather than drastic changes
+
+**Response Structure:**
+- Start with a brief, encouraging acknowledgment
+- Provide specific, actionable advice
+- Include step-by-step instructions when applicable
+- Add safety considerations and modifications
+- End with follow-up questions or next steps
+
+**Key Areas of Expertise:**
+- **Nutrition**: Meal planning, macronutrient balance, timing, supplements
+- **Exercise**: Strength training, cardio, flexibility, mobility, recovery
+- **Lifestyle**: Sleep, stress management, habit formation, consistency
+- **Goal Setting**: SMART goals, progress tracking, motivation strategies
+
+**Tone:**
+- Professional yet friendly
+- Encouraging but realistic
+- Educational and informative
+- Supportive and non-judgmental
+
+Always ask clarifying questions when needed to provide more personalized advice.`;
+
 // Analyze food entry and return nutritional information
 export async function analyzeFoodEntry(
   foodName: string,
@@ -101,15 +132,50 @@ export async function analyzeFoodEntry(
   }
 }
 
-// Chat with AI about fitness and nutrition
+// Enhanced chat with AI about fitness and nutrition
 export async function getFitnessResponse(
   userMessage: string,
-  previousMessages: Array<{ role: "user" | "assistant"; content: string }> = []
-): Promise<string> {
+  previousMessages: Array<{ role: "user" | "assistant"; content: string }> = [],
+  userContext?: {
+    fitnessLevel?: string;
+    goals?: string[];
+    dietaryRestrictions?: string[];
+    availableTime?: string;
+    equipment?: string[];
+  }
+): Promise<{
+  response: string;
+  actionItems: string[];
+  followUpQuestions: string[];
+  category: string;
+  confidence: number;
+}> {
   try {
+    const contextPrompt = userContext ? `
+User Context:
+- Fitness Level: ${userContext.fitnessLevel || 'Not specified'}
+- Goals: ${userContext.goals?.join(', ') || 'Not specified'}
+- Dietary Restrictions: ${userContext.dietaryRestrictions?.join(', ') || 'None'}
+- Available Time: ${userContext.availableTime || 'Not specified'}
+- Equipment: ${userContext.equipment?.join(', ') || 'None'}
+
+Please use this context to provide more personalized advice.
+` : '';
+
     const systemMessage = {
       role: "system",
-      content: "You are an expert fitness and nutrition coach. Provide accurate, helpful, and motivating advice about fitness, nutrition, weight management, and healthy lifestyle habits. Base your responses on scientific evidence and best practices. Keep responses concise but informative."
+      content: `${ENHANCED_FITNESS_SYSTEM_MESSAGE}
+
+${contextPrompt}
+
+Please structure your response to include:
+1. A helpful, personalized answer to the user's question
+2. 3-5 specific action items they can implement
+3. 2-3 follow-up questions to better understand their needs
+4. The category of advice (nutrition, workout, lifestyle, recovery, planning)
+5. Your confidence level (0-1) in the advice given
+
+Respond in a conversational, encouraging tone while being specific and actionable.`
     };
 
     const messages = [
@@ -120,8 +186,8 @@ export async function getFitnessResponse(
 
     const response = await openai.chat.completions.create({
       model: "gpt-3.5-turbo",
-      messages: messages as any, // TypeScript compatibility
-      max_tokens: 500,
+      messages: messages as any,
+      max_tokens: 800,
       temperature: 0.7
     });
 
@@ -129,14 +195,125 @@ export async function getFitnessResponse(
     if (!content) {
       throw new Error('No content in OpenAI response');
     }
-    return content;
+
+    // Parse the response to extract structured information
+    const lines = content.split('\n');
+    let mainResponse = '';
+    let actionItems: string[] = [];
+    let followUpQuestions: string[] = [];
+    let category = 'general';
+    let confidence = 0.8;
+
+    let currentSection = 'response';
+    
+    for (const line of lines) {
+      const trimmedLine = line.trim();
+      
+      if (trimmedLine.toLowerCase().includes('action items:') || trimmedLine.toLowerCase().includes('steps:')) {
+        currentSection = 'actionItems';
+        continue;
+      } else if (trimmedLine.toLowerCase().includes('follow-up questions:') || trimmedLine.toLowerCase().includes('next steps:')) {
+        currentSection = 'followUp';
+        continue;
+      } else if (trimmedLine.toLowerCase().includes('category:') || trimmedLine.toLowerCase().includes('type:')) {
+        const categoryMatch = trimmedLine.match(/category:\s*(.+)/i) || trimmedLine.match(/type:\s*(.+)/i);
+        if (categoryMatch) {
+          category = categoryMatch[1].toLowerCase();
+        }
+        continue;
+      } else if (trimmedLine.toLowerCase().includes('confidence:')) {
+        const confidenceMatch = trimmedLine.match(/confidence:\s*([0-9.]+)/i);
+        if (confidenceMatch) {
+          confidence = parseFloat(confidenceMatch[1]);
+        }
+        continue;
+      }
+
+      if (trimmedLine && !trimmedLine.startsWith('---')) {
+        if (currentSection === 'response') {
+          mainResponse += (mainResponse ? '\n' : '') + trimmedLine;
+        } else if (currentSection === 'actionItems' && (trimmedLine.startsWith('•') || trimmedLine.startsWith('-') || trimmedLine.match(/^\d+\./))) {
+          const item = trimmedLine.replace(/^[•\-\d\.\s]+/, '').trim();
+          if (item) actionItems.push(item);
+        } else if (currentSection === 'followUp' && (trimmedLine.startsWith('•') || trimmedLine.startsWith('-') || trimmedLine.match(/^\d+\./))) {
+          const question = trimmedLine.replace(/^[•\-\d\.\s]+/, '').trim();
+          if (question) followUpQuestions.push(question);
+        }
+      }
+    }
+
+    // Fallback action items and questions if not found in response
+    if (actionItems.length === 0) {
+      actionItems = [
+        "Start with small, manageable changes",
+        "Track your progress consistently",
+        "Stay consistent with your routine"
+      ];
+    }
+
+    if (followUpQuestions.length === 0) {
+      followUpQuestions = [
+        "What specific goals would you like to focus on?",
+        "What challenges are you currently facing?"
+      ];
+    }
+
+    // Determine category if not specified
+    if (category === 'general') {
+      const input = userMessage.toLowerCase();
+      if (input.includes('workout') || input.includes('exercise') || input.includes('training')) {
+        category = 'workout';
+      } else if (input.includes('nutrition') || input.includes('diet') || input.includes('meal') || input.includes('protein')) {
+        category = 'nutrition';
+      } else if (input.includes('sleep') || input.includes('recovery') || input.includes('rest')) {
+        category = 'lifestyle';
+      } else if (input.includes('goal') || input.includes('plan')) {
+        category = 'planning';
+      }
+    }
+
+    return {
+      response: mainResponse || content,
+      actionItems: actionItems.slice(0, 5),
+      followUpQuestions: followUpQuestions.slice(0, 3),
+      category,
+      confidence
+    };
   } catch (error) {
     console.error("Error getting fitness response:", error);
-    throw new Error("Failed to get fitness response from AI");
+    
+    // Handle specific error types
+    let fallbackMessage = "I'd love to help you with that! To provide the most personalized advice, could you tell me more about your specific goals and current situation?";
+    
+    if (error && typeof error === 'object' && 'status' in error) {
+      const status = (error as any).status;
+      if (status === 429) {
+        fallbackMessage = "I'm experiencing high demand right now. Let me provide some general guidance while I get back to full capacity. What specific fitness or nutrition question do you have?";
+      } else if (status >= 500) {
+        fallbackMessage = "I'm having technical difficulties at the moment. Let me give you some general advice while I work on getting back to full functionality.";
+      }
+    }
+    
+    // Fallback response
+    return {
+      response: fallbackMessage,
+      actionItems: [
+        "Share your fitness goals",
+        "Describe your current routine",
+        "Mention any challenges you're facing"
+      ],
+      followUpQuestions: [
+        "What are your main fitness goals?",
+        "What's your current fitness level?",
+        "How much time can you dedicate to fitness?"
+      ],
+      category: 'general',
+      confidence: 0.5
+    };
   }
 }
 
-// Get nutrition recommendations based on user's food entries
+// Enhanced nutrition recommendations based on user's food entries
 export async function getNutritionRecommendations(
   recentEntries: Array<{
     name: string;
@@ -151,10 +328,16 @@ export async function getNutritionRecommendations(
     carbGoal: number;
     fatGoal: number;
   }
-): Promise<Array<{ title: string; description: string }>> {
+): Promise<Array<{ 
+  title: string; 
+  description: string;
+  actionItems: string[];
+  priority: 'high' | 'medium' | 'low';
+  category: string;
+}>> {
   try {
     const prompt = `
-      Based on the user's recent food entries and nutrition goals, provide 3 personalized recommendations for improving their diet.
+      Based on the user's recent food entries and nutrition goals, provide 4 personalized recommendations for improving their diet.
       
       Recent Food Entries:
       ${recentEntries.map(entry => `${entry.name} - Calories: ${entry.calories}, Protein: ${entry.protein}g, Carbs: ${entry.carbs}g, Fat: ${entry.fat}g`).join('\n')}
@@ -166,8 +349,13 @@ export async function getNutritionRecommendations(
       Fat: ${nutritionGoals.fatGoal}g
       
       Please provide the recommendations in JSON format with an array of objects, each having:
-      1. title - A short title for the recommendation
-      2. description - A brief explanation of the recommendation
+      1. title - A short, actionable title
+      2. description - A detailed explanation of the recommendation
+      3. actionItems - An array of 3-5 specific steps to implement
+      4. priority - "high", "medium", or "low" based on impact
+      5. category - "nutrition", "meal-planning", "timing", or "supplements"
+      
+      Focus on practical, implementable advice that addresses specific gaps in their current nutrition.
     `;
 
     const response = await openai.chat.completions.create({
@@ -184,18 +372,61 @@ export async function getNutritionRecommendations(
     return result.recommendations || [];
   } catch (error) {
     console.error("Error getting nutrition recommendations:", error);
+    
+    // Log specific error details for debugging
+    if (error && typeof error === 'object' && 'status' in error) {
+      const status = (error as any).status;
+      if (status === 429) {
+        console.log("OpenAI rate limit exceeded - using fallback recommendations");
+      } else if (status >= 500) {
+        console.log("OpenAI service error - using fallback recommendations");
+      }
+    }
+    
     return [
       { 
-        title: "Balance Your Meals", 
-        description: "Try to include protein, healthy fats, and complex carbohydrates in each meal for better nutritional balance."
+        title: "Optimize Protein Distribution", 
+        description: "Spread your protein intake evenly throughout the day for better muscle synthesis and satiety.",
+        actionItems: [
+          "Aim for 20-30g protein per meal",
+          "Include protein in every snack",
+          "Consider protein timing around workouts"
+        ],
+        priority: "high",
+        category: "nutrition"
       },
       {
-        title: "Stay Hydrated",
-        description: "Drink plenty of water throughout the day to support metabolism and overall health."
+        title: "Improve Meal Timing",
+        description: "Time your meals and snacks strategically to support your energy levels and recovery.",
+        actionItems: [
+          "Eat within 1 hour of waking",
+          "Have a balanced meal 2-3 hours before workouts",
+          "Include protein and carbs within 30 minutes after exercise"
+        ],
+        priority: "medium",
+        category: "timing"
       },
       {
-        title: "Add More Vegetables",
-        description: "Increase your vegetable intake to get more micronutrients and fiber in your diet."
+        title: "Enhance Meal Variety",
+        description: "Increase the variety of foods in your diet to ensure you're getting all necessary nutrients.",
+        actionItems: [
+          "Try one new food each week",
+          "Include different colored vegetables daily",
+          "Rotate protein sources throughout the week"
+        ],
+        priority: "medium",
+        category: "nutrition"
+      },
+      {
+        title: "Track and Adjust",
+        description: "Monitor your nutrition intake and adjust based on your progress and goals.",
+        actionItems: [
+          "Log your meals consistently",
+          "Review your weekly nutrition summary",
+          "Adjust portions based on progress"
+        ],
+        priority: "low",
+        category: "meal-planning"
       }
     ];
   }

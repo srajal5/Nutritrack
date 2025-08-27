@@ -21,7 +21,6 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(import.meta.dirname, "client", "src"),
-      "@shared": path.resolve(import.meta.dirname, "shared"),
       "@assets": path.resolve(import.meta.dirname, "attached_assets"),
     },
   },
@@ -31,9 +30,20 @@ export default defineConfig({
     emptyOutDir: true,
   },
   server: {
+    port: 5173,
+    host: true, // Enable network access
+    open: true, // Automatically open browser
+    hmr: {
+      port: 5173,
+      overlay: true, // Show errors in browser overlay
+    },
+    watch: {
+      usePolling: true, // Better for some file systems
+      interval: 100, // Polling interval
+    },
     proxy: {
       '/api': {
-        target: 'http://localhost:3000',
+        target: 'http://localhost:3001',
         changeOrigin: true,
         secure: false,
       }

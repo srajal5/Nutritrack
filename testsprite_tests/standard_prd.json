@@ -1,0 +1,194 @@
+{
+  "meta": {
+    "project": "FoodFitnessTracker",
+    "date": "2025-08-17",
+    "prepared_by": "Software Development Manager"
+  },
+  "product_overview": "FoodFitnessTracker is a comprehensive nutrition and fitness tracking web application designed to empower users with AI-assisted dietary management, personalized nutrition coaching, and visual analytics to improve their health and wellness.",
+  "core_goals": [
+    "Provide users with an intuitive and robust food logging system featuring AI-powered nutritional analysis and barcode scanning.",
+    "Offer a personalized AI nutrition coach that delivers real-time recommendations and health insights via chat interface.",
+    "Enable detailed nutrition tracking and analytics with interactive charts and progress monitoring tools.",
+    "Ensure secure user authentication and profile management, maintaining data privacy and user preferences.",
+    "Deliver an engaging user experience with responsive design, customizable themes, and a clean dashboard interface."
+  ],
+  "key_features": [
+    "Complete user authentication system with login, registration, and session management using Passport.js and Firebase.",
+    "Main dashboard showcasing nutrition tracking, progress visualization, and quick access to key features.",
+    "Comprehensive food entry system enhanced by AI analysis and barcode scanning capabilities.",
+    "AI Coach Assistant offering personalized nutrition advice and health tips through an interactive chat.",
+    "Advanced nutrition tracking and analytics using Chart.js for visual data representation.",
+    "User profile and settings management to tailor the application to individual needs.",
+    "Attractive landing page to introduce product features and engage new users.",
+    "Customizable theme system including dark and light modes with user toggles.",
+    "Backend data management with MongoDB providing reliable storage and API endpoints.",
+    "Reusable UI components and custom React hooks for consistent and efficient front-end development."
+  ],
+  "user_flow_summary": [
+    "User registers and logs into the application securely via the authentication system.",
+    "Upon login, user lands on the dashboard where they can view their nutrition status and recent activity.",
+    "User logs food entries through a form that supports manual input, barcode scanning, and AI-powered nutritional breakdown.",
+    "Users interact with the AI Coach through a chat interface to receive personalized advice and recommendations.",
+    "Users monitor their nutrition and health statistics via visual charts and summaries available in the tracker and stats pages.",
+    "Users update their profile information and preferences through the profile management pages.",
+    "Users can toggle between light and dark themes to customize their viewing experience.",
+    "New users access the landing page to learn about the app, see feature highlights, and sign up."
+  ],
+  "validation_criteria": [
+    "All user authentication flows perform reliably and securely with proper session management.",
+    "Food entry inputs correctly invoke AI analysis and barcode scanning with accurate nutritional breakdown.",
+    "AI Coach provides relevant, personalized, and contextually appropriate recommendations.",
+    "Nutrition tracking charts display accurate and up-to-date data reflecting user inputs.",
+    "User profile settings save and load correctly with persistence across sessions.",
+    "Theme toggle works seamlessly switching between dark and light modes without UI glitches.",
+    "Landing page content loads correctly and is visually appealing across devices.",
+    "Backend API endpoints respond correctly and securely handle user data storage and retrieval.",
+    "UI components render correctly and maintain consistent styling with DaisyUI integration.",
+    "Application is responsive and functions correctly across defined viewport sizes: desktop, tablet, and mobile."
+  ],
+  "code_summary": {
+    "tech_stack": [
+      "TypeScript",
+      "React",
+      "Vite",
+      "Express.js",
+      "MongoDB",
+      "Mongoose",
+      "Tailwind CSS",
+      "DaisyUI",
+      "Framer Motion",
+      "React Query",
+      "Chart.js",
+      "OpenAI API",
+      "Firebase",
+      "Passport.js",
+      "Wouter Router"
+    ],
+    "features": [
+      {
+        "name": "Authentication System",
+        "description": "Complete user authentication with login, registration, and session management using Passport.js and Firebase",
+        "files": [
+          "client/src/pages/auth-page.tsx",
+          "client/src/hooks/use-auth.tsx",
+          "server/auth.ts",
+          "server/middleware.ts"
+        ]
+      },
+      {
+        "name": "Dashboard Interface",
+        "description": "Main dashboard with nutrition tracking, progress visualization, and quick actions using DaisyUI components",
+        "files": [
+          "client/src/pages/Dashboard.tsx",
+          "client/src/components/DashboardBackground.tsx",
+          "client/src/components/DashboardSkeleton.tsx",
+          "client/src/hooks/use-dashboard-data.tsx"
+        ]
+      },
+      {
+        "name": "Food Entry System",
+        "description": "Comprehensive food logging with AI-powered analysis, barcode scanning, and nutritional breakdown",
+        "files": [
+          "client/src/components/FoodEntryForm.tsx",
+          "client/src/components/RecentFoodEntries.tsx",
+          "client/src/components/NutritionInsights.tsx",
+          "server/routes/food-entries.ts"
+        ]
+      },
+      {
+        "name": "AI Coach Assistant",
+        "description": "AI-powered nutrition coach with chat interface, personalized recommendations, and health insights",
+        "files": [
+          "client/src/pages/AICoach.tsx",
+          "client/src/components/AIChatInterface.tsx",
+          "client/src/components/AIRecommendations.tsx",
+          "server/openai.ts"
+        ]
+      },
+      {
+        "name": "Nutrition Tracking & Analytics",
+        "description": "Advanced nutrition tracking with charts, progress monitoring, and detailed analytics",
+        "files": [
+          "client/src/pages/Tracker.tsx",
+          "client/src/pages/Stats.tsx",
+          "client/src/components/NutritionChart.tsx",
+          "client/src/components/NutrientBreakdownChart.tsx",
+          "client/src/components/WeeklyCaloriesChart.tsx",
+          "client/src/components/HealthStats.tsx",
+          "client/src/components/DailySummary.tsx"
+        ]
+      },
+      {
+        "name": "User Profile Management",
+        "description": "User profile management with settings, preferences, and personal information",
+        "files": [
+          "client/src/pages/Profile.tsx",
+          "client/src/components/Header.tsx",
+          "client/src/components/MobileNav.tsx"
+        ]
+      },
+      {
+        "name": "Landing Page & Marketing",
+        "description": "Attractive landing page with feature showcase, testimonials, and call-to-action sections",
+        "files": [
+          "client/src/pages/Home.tsx",
+          "client/src/components/FeatureCard.tsx",
+          "client/src/components/Footer.tsx"
+        ]
+      },
+      {
+        "name": "Theme System",
+        "description": "Complete theme system with dark/light mode toggle and customizable color schemes",
+        "files": [
+          "client/src/components/ThemeProvider.tsx",
+          "client/src/components/ThemeToggle.tsx",
+          "client/src/components/ThemeDemo.tsx",
+          "client/src/pages/ThemeTestPage.tsx"
+        ]
+      },
+      {
+        "name": "Data Management & Storage",
+        "description": "Backend data management with MongoDB, user data storage, and API endpoints",
+        "files": [
+          "server/storage.ts",
+          "server/db.ts",
+          "server/models/index.ts",
+          "server/routes.ts",
+          "server/routes/dashboard.ts",
+          "server/routes/nutrition-goals.ts"
+        ]
+      },
+      {
+        "name": "UI Components Library",
+        "description": "Comprehensive UI component library with DaisyUI integration and custom components",
+        "files": [
+          "client/src/components/ui/",
+          "client/src/components/BackButton.tsx",
+          "client/src/components/CookieConsent.tsx"
+        ]
+      },
+      {
+        "name": "Custom Hooks",
+        "description": "Reusable React hooks for authentication, mobile detection, and toast notifications",
+        "files": [
+          "client/src/hooks/use-auth.tsx",
+          "client/src/hooks/use-mobile.tsx",
+          "client/src/hooks/use-toast.ts",
+          "client/src/hooks/use-dashboard-data.tsx"
+        ]
+      },
+      {
+        "name": "Application Core",
+        "description": "Main application setup, routing, and core configuration",
+        "files": [
+          "client/src/App.tsx",
+          "client/src/main.tsx",
+          "client/src/lib/firebase.ts",
+          "client/src/lib/queryClient.ts",
+          "client/src/lib/utils.ts",
+          "client/src/types/index.ts"
+        ]
+      }
+    ]
+  }
+}

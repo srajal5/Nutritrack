@@ -1,0 +1,495 @@
+[
+  {
+    "id": "TC001",
+    "title": "User Registration Success",
+    "description": "Verify that a new user can successfully register with valid details and receive confirmation.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to the registration page."
+      },
+      {
+        "type": "action",
+        "description": "Enter valid user details including email, username, and password."
+      },
+      {
+        "type": "action",
+        "description": "Submit the registration form."
+      },
+      {
+        "type": "assertion",
+        "description": "Confirm that the registration completes successfully with a success message."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify user is redirected to the login page or logged in automatically."
+      }
+    ]
+  },
+  {
+    "id": "TC002",
+    "title": "User Registration with Existing Email",
+    "description": "Verify that registering with an already registered email shows an appropriate error.",
+    "category": "error handling",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to the registration page."
+      },
+      {
+        "type": "action",
+        "description": "Enter an email address that is already registered and fill other details."
+      },
+      {
+        "type": "action",
+        "description": "Submit the registration form."
+      },
+      {
+        "type": "assertion",
+        "description": "Confirm error message stating the email is already in use."
+      }
+    ]
+  },
+  {
+    "id": "TC003",
+    "title": "User Login Success",
+    "description": "Verify that a registered user can login with correct credentials.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to the login page."
+      },
+      {
+        "type": "action",
+        "description": "Enter valid email/username and password."
+      },
+      {
+        "type": "action",
+        "description": "Click the login button."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify user is authenticated and redirected to the dashboard."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify that session management maintains login status across page refresh."
+      }
+    ]
+  },
+  {
+    "id": "TC004",
+    "title": "User Login Failure with Incorrect Credentials",
+    "description": "Verify login fails with invalid username or password and appropriate error is displayed.",
+    "category": "error handling",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to the login page."
+      },
+      {
+        "type": "action",
+        "description": "Enter invalid email/username or incorrect password."
+      },
+      {
+        "type": "action",
+        "description": "Click the login button."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify error message is shown indicating invalid credentials."
+      }
+    ]
+  },
+  {
+    "id": "TC005",
+    "title": "Food Entry with Manual Input",
+    "description": "Verify user can successfully log a food entry by manually entering item details which invoke AI nutritional analysis.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Login and navigate to the food entry form on the dashboard."
+      },
+      {
+        "type": "action",
+        "description": "Manually enter food name, quantity, and other relevant details."
+      },
+      {
+        "type": "action",
+        "description": "Submit the food entry form."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify AI analysis runs and nutritional breakdown is displayed."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the entry is saved and appears in recent food entries."
+      }
+    ]
+  },
+  {
+    "id": "TC006",
+    "title": "Food Entry with Barcode Scanning",
+    "description": "Verify the barcode scanning feature adds a food entry with correct nutritional data.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Login and navigate to the food entry form."
+      },
+      {
+        "type": "action",
+        "description": "Use barcode scanner to scan a product barcode."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify correct food item is identified and nutritional information is populated automatically."
+      },
+      {
+        "type": "action",
+        "description": "Submit the form."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify entry is saved and listed in recent entries."
+      }
+    ]
+  },
+  {
+    "id": "TC007",
+    "title": "AI Coach Provides Personalized Nutrition Recommendations",
+    "description": "Verify the AI Coach assistant returns contextually appropriate personalized nutrition advice based on user data and conversation.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Login and navigate to the AI Coach chat interface."
+      },
+      {
+        "type": "action",
+        "description": "Enter a health or nutrition related query."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify AI provides precise, relevant, and personalized recommendations."
+      },
+      {
+        "type": "action",
+        "description": "Follow up with additional questions to test contextual understanding."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify chat maintains context and responds appropriately."
+      }
+    ]
+  },
+  {
+    "id": "TC008",
+    "title": "Nutrition Tracking Charts Accuracy and Update",
+    "description": "Verify nutrition tracking charts show accurate and updated data reflecting user food inputs and progress over time.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Login and navigate to the nutrition tracker page."
+      },
+      {
+        "type": "action",
+        "description": "Verify charts display current nutrition summary (calories, macros, micronutrients)."
+      },
+      {
+        "type": "action",
+        "description": "Add multiple food entries with various nutritional values."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify all related charts update immediately with correct aggregated data."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify charts handle edge cases such as zero values or very large quantities gracefully."
+      }
+    ]
+  },
+  {
+    "id": "TC009",
+    "title": "User Profile Updates Save Correctly and Persist",
+    "description": "Verify that edits to user profile and settings save correctly and persist after logout/login cycles.",
+    "category": "functional",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Login and navigate to the profile management page."
+      },
+      {
+        "type": "action",
+        "description": "Update personal information fields and application preferences."
+      },
+      {
+        "type": "action",
+        "description": "Save changes."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify success confirmation is shown."
+      },
+      {
+        "type": "action",
+        "description": "Logout and login again."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify previously saved details are loaded correctly."
+      }
+    ]
+  },
+  {
+    "id": "TC010",
+    "title": "Theme Toggle Functionality and UI Consistency",
+    "description": "Verify the theme toggle correctly switches between light and dark mode without UI glitches or loss of user preferences.",
+    "category": "functional",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Login and navigate to any page."
+      },
+      {
+        "type": "action",
+        "description": "Toggle the theme switch to dark mode."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify UI colors and components adapt appropriately to dark theme."
+      },
+      {
+        "type": "action",
+        "description": "Toggle back to light mode."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify UI returns to light theme correctly without styling issues."
+      },
+      {
+        "type": "action",
+        "description": "Reload or navigate to different pages."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify theme preference is persisted across sessions and pages."
+      }
+    ]
+  },
+  {
+    "id": "TC011",
+    "title": "Landing Page Content and Responsiveness",
+    "description": "Verify the landing page loads fully with all content visible and is visually appealing and responsive across desktop, tablet, and mobile devices.",
+    "category": "ui",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to the landing page on desktop viewport."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify all sections including features, testimonials, and call-to-action load correctly."
+      },
+      {
+        "type": "action",
+        "description": "Resize viewport to tablet size."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify layout adapts properly without overlap or missing content."
+      },
+      {
+        "type": "action",
+        "description": "Resize viewport to mobile size."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify landing page remains usable and visually consistent on mobile."
+      }
+    ]
+  },
+  {
+    "id": "TC012",
+    "title": "Backend API Security and Data Handling",
+    "description": "Verify backend API endpoints securely handle user data with authentication and proper data validation.",
+    "category": "security",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Attempt API access without authentication."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify unauthorized requests are rejected with 401/403 errors."
+      },
+      {
+        "type": "action",
+        "description": "Login and obtain valid session/token."
+      },
+      {
+        "type": "action",
+        "description": "Perform CRUD operations on user data (profile, food entries, nutrition goals)."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify correct data is returned or stored."
+      },
+      {
+        "type": "action",
+        "description": "Send malformed or invalid data to endpoints."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify backend returns appropriate error codes and messages without corrupting data."
+      }
+    ]
+  },
+  {
+    "id": "TC013",
+    "title": "UI Components Rendering and Styling Consistency",
+    "description": "Verify reusable UI components render correctly with expected DaisyUI styling and behave consistently across the application.",
+    "category": "ui",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to pages using shared UI components (buttons, input forms, modals, navbars)."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify components render as per design specification and contain correct DaisyUI styles."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify components respond correctly to user interactions (hover, click, focus)."
+      },
+      {
+        "type": "action",
+        "description": "Toggle themes and verify UI components adapt styling accordingly."
+      }
+    ]
+  },
+  {
+    "id": "TC014",
+    "title": "Application Responsiveness Across Devices",
+    "description": "Verify the entire application UI is responsive and functions correctly on defined viewport sizes: desktop, tablet, and mobile.",
+    "category": "ui",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Load the application on a desktop browser."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify all pages display correctly without layout issues."
+      },
+      {
+        "type": "action",
+        "description": "Resize or emulate tablet viewport."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify navigation, forms, and content adapt to tablet layout."
+      },
+      {
+        "type": "action",
+        "description": "Resize or emulate mobile viewport."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify menu and UI components adapt for mobile usability and accessibility."
+      }
+    ]
+  },
+  {
+    "id": "TC015",
+    "title": "Session Timeout and Logout Functionality",
+    "description": "Verify that the user session expires appropriately after inactivity and manual logout functions correctly.",
+    "category": "security",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Login and remain inactive for session timeout duration."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify user is automatically logged out after timeout and redirected to login page."
+      },
+      {
+        "type": "action",
+        "description": "Login again and manually click logout button."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify session terminates and user is redirected to login."
+      }
+    ]
+  },
+  {
+    "id": "TC016",
+    "title": "Handling Large Volume of Food Entries without Performance Degradation",
+    "description": "Verify that the system handles large numbers of food entries gracefully and UI performance remains acceptable.",
+    "category": "functional",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Login and add a large volume (e.g., 1000+) of food entries via API or UI."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the dashboard, recent entries, and charts load in reasonable time without errors."
+      },
+      {
+        "type": "action",
+        "description": "Filter or search food entries."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify system returns accurate filtered results efficiently."
+      }
+    ]
+  },
+  {
+    "id": "TC017",
+    "title": "AI Coach Response to Invalid or Unsupported Queries",
+    "description": "Verify AI Coach gracefully handles unrecognized or irrelevant queries without crashing or providing misleading information.",
+    "category": "error handling",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to AI Coach chat interface."
+      },
+      {
+        "type": "action",
+        "description": "Enter nonsensical, ambiguous, or irrelevant queries/questions."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify AI Coach responds politely indicating lack of understanding or redirects to help resources."
+      }
+    ]
+  }
+]

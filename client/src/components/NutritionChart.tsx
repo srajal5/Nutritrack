@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Chart, DoughnutController, ArcElement, Legend, Tooltip } from 'chart.js';
 import { FoodEntryDocument } from '../types';
+import { useAuth } from '@/hooks/use-auth';
 
 Chart.register(DoughnutController, ArcElement, Legend, Tooltip);
 
@@ -12,14 +13,16 @@ interface NutritionTotals {
   fat: number;
 }
 
-const NutritionChart = ({ userId = 1 }) => {
+const NutritionChart = () => {
   const chartRef = useRef<HTMLCanvasElement>(null);
   const chartInstance = useRef<Chart | null>(null);
+  const { user } = useAuth();
   
   // Fetch food entries with proper typing
   const { data: todayEntries = [], isLoading } = useQuery<FoodEntryDocument[]>({
-    queryKey: [`/api/food-entries/daily?userId=${userId}`],
-    initialData: []
+    queryKey: [`/api/food-entries/daily?userId=${user?.id}`],
+    initialData: [],
+    enabled: !!user?.id
   });
   
   // Calculate macronutrient totals and percentages

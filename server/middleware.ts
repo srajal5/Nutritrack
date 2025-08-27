@@ -2,12 +2,14 @@ import { Request, Response, NextFunction } from "express";
 
 // Middleware to ensure user is authenticated
 export const ensureAuthenticated = (req: Request, res: Response, next: NextFunction) => {
-  console.log('Auth check:', {
-    isAuthenticated: req.isAuthenticated(),
-    sessionID: req.sessionID,
-    user: req.user,
-    cookies: req.headers.cookie
-  });
+  if (process.env.NODE_ENV === 'development') {
+    console.log('Auth check:', {
+      isAuthenticated: req.isAuthenticated(),
+      sessionID: req.sessionID,
+      user: req.user,
+      cookies: req.headers.cookie
+    });
+  }
   
   if (req.isAuthenticated()) {
     return next();

@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../co
 import { useState } from "react";
 import { useToast } from "../hooks/use-toast";
 import { Camera, Loader2 } from "lucide-react";
+import BackButton from "../components/BackButton";
 
 export default function Profile() {
   const { user } = useAuth();
@@ -54,6 +55,11 @@ export default function Profile() {
 
   return (
     <div className="container max-w-2xl py-8">
+      {/* Header with Back Button */}
+      <div className="mb-6">
+        <BackButton />
+      </div>
+      
       <Card className="w-full">
         <CardHeader>
           <CardTitle>Profile Settings</CardTitle>

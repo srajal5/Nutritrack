@@ -4,8 +4,20 @@ import { useAuth } from "../hooks/use-auth";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { insertUserSchema } from "@shared/schema";
-import { Button } from "../components/ui/button";
+import BackButton from "../components/BackButton";
+// Define the insert user schema locally since shared schema was removed
+const insertUserSchema = z.object({
+  username: z.string().min(3, {
+    message: "Username must be at least 3 characters.",
+  }),
+  email: z.string().email({
+    message: "Please enter a valid email address.",
+  }),
+  password: z.string().min(6, {
+    message: "Password must be at least 6 characters.",
+  }),
+  displayName: z.string().optional(),
+});
 import {
   Form,
   FormControl,
@@ -14,6 +26,7 @@ import {
   FormLabel,
   FormMessage,
 } from "../components/ui/form";
+import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 import { Loader2 } from "lucide-react";
@@ -81,7 +94,12 @@ export default function AuthPage() {
   return (
     <div className="min-h-screen flex flex-col md:flex-row">
       {/* Auth Form */}
-      <div className="flex-1 flex items-center justify-center p-6 bg-white">
+      <div className="flex-1 flex items-center justify-center p-6 bg-white relative">
+        {/* Back Button */}
+        <div className="absolute top-6 left-6">
+          <BackButton showHome={true} />
+        </div>
+        
         <div className="w-full max-w-md space-y-8">
           <div className="text-center">
             <h1 className="text-3xl font-bold tracking-tight text-gray-900">

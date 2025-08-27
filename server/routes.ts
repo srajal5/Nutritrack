@@ -7,6 +7,7 @@ import { setupAuth } from "./auth";
 import { analyzeFoodEntry, getFitnessResponse, getNutritionRecommendations } from "./openai";
 import foodEntriesRouter from './routes/food-entries';
 import nutritionGoalsRouter from './routes/nutrition-goals';
+import dashboardRouter from './routes/dashboard';
 import mongoose from 'mongoose';
 
 // Extend Express.Request to include user
@@ -49,15 +50,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ error: "User not authenticated" });
       }
 
-      // First, get the user document to get the MongoDB _id
-      const user = await storage.getUser(req.user.id);
-      if (!user) {
-        return res.status(401).json({ error: "User not found" });
-      }
-
-      // Use the MongoDB _id for the userId field
+      // Use the user's numeric ID directly
       const foodEntryData: FoodEntryInput = {
-        userId: user._id as mongoose.Types.ObjectId, // Cast to ObjectId
+        userId: req.user.id, // Use the numeric ID
         name,
         servingSize: servingSize.toString(),
         mealType,
@@ -202,10 +197,10 @@ Possible Allergens: ${analysis.possibleAllergens?.join(', ') || 'None detected'}
     }
   });
 
-  // Chat API
+  // Enhanced Chat API
   app.post("/api/chat", async (req, res) => {
     try {
-      const { message, conversationId } = req.body;
+      const { message, conversationId, userContext } = req.body;
       
       if (!message || !conversationId) {
         return res.status(400).json({ message: "Message and conversation ID are required" });
@@ -223,22 +218,29 @@ Possible Allergens: ${analysis.possibleAllergens?.join(', ') || 'None detected'}
         content: msg.message
       }));
 
-      // Get AI response
-      const response = await getFitnessResponse(message, formattedPreviousMessages);
+      // Get enhanced AI response with user context
+      const aiResponse = await getFitnessResponse(message, formattedPreviousMessages, userContext);
       
       // Create chat message with generated ID
       const chatMessage = await storage.createChatMessage({
         id: Date.now(), // Simple ID generation
         userId,
         message,
-        response,
+        response: aiResponse.response,
         timestamp: new Date(),
         conversationId,
         createdAt: new Date(),
         updatedAt: new Date()
       });
 
-      res.json(chatMessage);
+      // Return enhanced response with structured data
+      res.json({
+        ...chatMessage,
+        actionItems: aiResponse.actionItems,
+        followUpQuestions: aiResponse.followUpQuestions,
+        category: aiResponse.category,
+        confidence: aiResponse.confidence
+      });
     } catch (error) {
       console.error('Error in chat route:', error);
       res.status(500).json({ message: "Failed to process chat message" });
@@ -284,7 +286,7 @@ Possible Allergens: ${analysis.possibleAllergens?.join(', ') || 'None detected'}
       }
 
       const goalData: NutritionGoalInput = {
-        userId: new mongoose.Types.ObjectId(req.user.id.toString()),
+        userId: req.user.id,
         calorieGoal: Number(req.body.calorieGoal),
         proteinGoal: Number(req.body.proteinGoal),
         carbGoal: Number(req.body.carbGoal),
@@ -410,19 +412,14 @@ Possible Allergens: ${analysis.possibleAllergens?.join(', ') || 'None detected'}
     res.json(topics);
   });
 
-  app.get("/api/user", (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).json({ message: "Not authenticated" });
-    }
-    const { password, ...userWithoutPassword } = req.user;
-    res.json(userWithoutPassword);
-  });
-
   // Food entries routes
   app.use('/api/food-entries', foodEntriesRouter);
 
   // Nutrition goals routes
   app.use('/api/nutrition-goals', nutritionGoalsRouter);
+
+  // Dashboard routes
+  app.use('/api/dashboard', dashboardRouter);
 
   // Health check route
   app.get('/health', (_req, res) => {

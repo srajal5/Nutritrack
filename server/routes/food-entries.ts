@@ -17,14 +17,16 @@ router.get('/daily', ensureAuthenticated, async (req, res) => {
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
 
-    const entries = await storage.getFoodEntriesByUserId(new mongoose.Types.ObjectId(userId.toString()));
+    const entries = await storage.getFoodEntriesByUserId(userId);
     const todaysEntries = entries.filter((entry: FoodEntryDocument) => {
       const entryDate = new Date(entry.entryDate);
-      return entryDate >= today;
+      return entryDate >= today && entryDate < tomorrow;
     });
 
-    const nutritionGoal = await storage.getNutritionGoalByUserId(new mongoose.Types.ObjectId(userId.toString()));
+    const nutritionGoal = await storage.getNutritionGoalByUserId(userId);
 
     const summary = {
       totalCalories: todaysEntries.reduce((sum: number, entry: FoodEntryDocument) => sum + (entry.calories || 0), 0),
@@ -54,7 +56,7 @@ router.get('/weekly', ensureAuthenticated, async (req, res) => {
     startOfWeek.setDate(today.getDate() - 6); // Last 7 days
     startOfWeek.setHours(0, 0, 0, 0);
 
-    const entries = await storage.getFoodEntriesByUserId(new mongoose.Types.ObjectId(userId.toString()));
+    const entries = await storage.getFoodEntriesByUserId(userId);
     const weeklyEntries = entries.filter((entry: FoodEntryDocument) => {
       const entryDate = new Date(entry.entryDate);
       return entryDate >= startOfWeek;
@@ -94,7 +96,7 @@ router.get('/recent', ensureAuthenticated, async (req, res) => {
       return res.status(401).json({ error: 'Not authenticated' });
     }
 
-    const entries = await storage.getFoodEntriesByUserId(new mongoose.Types.ObjectId(userId.toString()));
+    const entries = await storage.getFoodEntriesByUserId(userId);
     const recentEntries = entries
       .sort((a: FoodEntryDocument, b: FoodEntryDocument) => new Date(b.entryDate).getTime() - new Date(a.entryDate).getTime())
       .slice(0, 5)
@@ -121,6 +123,8 @@ const foodEntrySchema = z.object({
   protein: z.number().optional(),
   carbs: z.number().optional(),
   fat: z.number().optional(),
+  fiber: z.number().optional(),
+  sugar: z.number().optional(),
   description: z.string().optional(),
   imageUrl: z.string().optional()
 });
@@ -135,7 +139,7 @@ router.post('/', ensureAuthenticated, async (req, res) => {
     const validatedData = foodEntrySchema.parse(req.body);
     const entry = await storage.createFoodEntry({
       ...validatedData,
-      userId: new mongoose.Types.ObjectId(userId.toString()),
+      userId: userId,
       entryDate: new Date()
     });
 

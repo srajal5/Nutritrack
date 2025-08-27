@@ -8,6 +8,393 @@
   }
 
   body {
-    @apply font-sans antialiased bg-background text-foreground;
+    @apply font-sans antialiased transition-colors duration-300;
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
   }
+
+  /* Ensure all elements inherit theme colors */
+  html {
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+  }
+
+  /* Smooth transitions for all theme changes */
+  * {
+    transition: none;
+  }
+  
+  /* Only apply transitions when theme-transition class is present */
+  .theme-transition * {
+    transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+  }
+}
+
+/* CSS Custom Properties - Light Theme (Default) */
+:root {
+  --background: 0 0% 98%;
+  --foreground: 222.2 84% 4.9%;
+  --card: 0 0% 98%;
+  --card-foreground: 222.2 84% 4.9%;
+  --popover: 0 0% 98%;
+  --popover-foreground: 222.2 84% 4.9%;
+  --primary: 142.1 76.2% 36.3%;
+  --primary-foreground: 355.7 100% 97.3%;
+  --secondary: 210 40% 94%;
+  --secondary-foreground: 222.2 84% 4.9%;
+  --muted: 210 40% 94%;
+  --muted-foreground: 215.4 16.3% 46.9%;
+  --accent: 210 40% 94%;
+  --accent-foreground: 222.2 84% 4.9%;
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 210 40% 98%;
+  --border: 214.3 31.8% 91.4%;
+  --input: 214.3 31.8% 91.4%;
+  --ring: 142.1 76.2% 36.3%;
+  --radius: 0.5rem;
+}
+
+/* Dark Theme */
+.dark {
+  --background: 222.2 84% 4.9%;
+  --foreground: 210 40% 98%;
+  --card: 222.2 84% 4.9%;
+  --card-foreground: 210 40% 98%;
+  --popover: 222.2 84% 4.9%;
+  --popover-foreground: 210 40% 98%;
+  --primary: 142.1 70.6% 45.3%;
+  --primary-foreground: 144.9 80.4% 10%;
+  --secondary: 217.2 32.6% 17.5%;
+  --secondary-foreground: 210 40% 98%;
+  --muted: 217.2 32.6% 17.5%;
+  --muted-foreground: 215 20.2% 65.1%;
+  --accent: 217.2 32.6% 17.5%;
+  --accent-foreground: 210 40% 98%;
+  --destructive: 0 62.8% 30.6%;
+  --destructive-foreground: 210 40% 98%;
+  --border: 217.2 32.6% 17.5%;
+  --input: 217.2 32.6% 17.5%;
+  --ring: 142.1 70.6% 45.3%;
+}
+
+/* DaisyUI Theme Overrides */
+[data-theme="light"] {
+  --background: 0 0% 98%;
+  --foreground: 222.2 84% 4.9%;
+  --card: 0 0% 98%;
+  --card-foreground: 222.2 84% 4.9%;
+  --popover: 0 0% 98%;
+  --popover-foreground: 222.2 84% 4.9%;
+  --primary: 142.1 76.2% 36.3%;
+  --primary-foreground: 355.7 100% 97.3%;
+  --secondary: 210 40% 94%;
+  --secondary-foreground: 222.2 84% 4.9%;
+  --muted: 210 40% 94%;
+  --muted-foreground: 215.4 16.3% 46.9%;
+  --accent: 210 40% 94%;
+  --accent-foreground: 222.2 84% 4.9%;
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 210 40% 98%;
+  --border: 214.3 31.8% 91.4%;
+  --input: 214.3 31.8% 91.4%;
+  --ring: 142.1 76.2% 36.3%;
+}
+
+[data-theme="dark"] {
+  --background: 222.2 84% 4.9%;
+  --foreground: 210 40% 98%;
+  --card: 222.2 84% 4.9%;
+  --card-foreground: 210 40% 98%;
+  --popover: 222.2 84% 4.9%;
+  --popover-foreground: 210 40% 98%;
+  --primary: 142.1 70.6% 45.3%;
+  --primary-foreground: 144.9 80.4% 10%;
+  --secondary: 217.2 32.6% 17.5%;
+  --secondary-foreground: 210 40% 98%;
+  --muted: 217.2 32.6% 17.5%;
+  --muted-foreground: 215 20.2% 65.1%;
+  --accent: 217.2 32.6% 17.5%;
+  --accent-foreground: 210 40% 98%;
+  --destructive: 0 62.8% 30.6%;
+  --destructive-foreground: 210 40% 98%;
+  --border: 217.2 32.6% 17.5%;
+  --input: 217.2 32.6% 17.5%;
+  --ring: 142.1 70.6% 45.3%;
+}
+
+/* Enhanced theme transition animations */
+.theme-transition {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+/* DaisyUI Component Theme Overrides */
+.btn {
+  background-color: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  border-color: hsl(var(--border));
+}
+
+.btn-primary {
+  background-color: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  border-color: hsl(var(--primary));
+}
+
+.btn-secondary {
+  background-color: hsl(var(--secondary));
+  color: hsl(var(--secondary-foreground));
+  border-color: hsl(var(--border));
+}
+
+.btn-outline {
+  background-color: transparent;
+  color: hsl(var(--foreground));
+  border-color: hsl(var(--border));
+}
+
+.btn-outline:hover {
+  background-color: hsl(var(--accent));
+  color: hsl(var(--accent-foreground));
+}
+
+.btn-ghost {
+  background-color: transparent;
+  color: hsl(var(--foreground));
+}
+
+.btn-ghost:hover {
+  background-color: hsl(var(--accent));
+  color: hsl(var(--accent-foreground));
+}
+
+/* Card components */
+.card {
+  background-color: hsl(var(--card));
+  color: hsl(var(--card-foreground));
+  border-color: hsl(var(--border));
+}
+
+.card-body {
+  background-color: hsl(var(--card));
+}
+
+.card-header {
+  background-color: hsl(var(--card));
+  border-color: hsl(var(--border));
+}
+
+.card-title {
+  color: hsl(var(--card-foreground));
+}
+
+.card-description {
+  color: hsl(var(--muted-foreground));
+}
+
+/* Form elements */
+.input {
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+  border-color: hsl(var(--border));
+}
+
+.input:focus {
+  border-color: hsl(var(--ring));
+  box-shadow: 0 0 0 2px hsl(var(--ring) / 0.2);
+}
+
+.label {
+  color: hsl(var(--foreground));
+}
+
+/* Badge components */
+.badge {
+  background-color: hsl(var(--secondary));
+  color: hsl(var(--secondary-foreground));
+  border-color: hsl(var(--border));
+}
+
+/* Progress bars */
+.progress {
+  background-color: hsl(var(--secondary));
+}
+
+.progress-indicator {
+  background-color: hsl(var(--primary));
+}
+
+/* Tabs */
+.tabs-trigger {
+  color: hsl(var(--muted-foreground));
+}
+
+.tabs-trigger:hover {
+  color: hsl(var(--foreground));
+}
+
+.tabs-trigger[data-state="active"] {
+  color: hsl(var(--foreground));
+}
+
+.tabs-content {
+  color: hsl(var(--foreground));
+}
+
+/* Select components */
+.select-trigger {
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+  border-color: hsl(var(--border));
+}
+
+.select-content {
+  background-color: hsl(var(--popover));
+  border-color: hsl(var(--border));
+}
+
+.select-item {
+  color: hsl(var(--popover-foreground));
+}
+
+.select-item:hover {
+  background-color: hsl(var(--accent));
+}
+
+/* Dialog components */
+.dialog-content {
+  background-color: hsl(var(--background));
+  border-color: hsl(var(--border));
+}
+
+.dialog-header {
+  border-color: hsl(var(--border));
+}
+
+.dialog-title {
+  color: hsl(var(--foreground));
+}
+
+.dialog-description {
+  color: hsl(var(--muted-foreground));
+}
+
+/* Tooltip */
+.tooltip-content {
+  background-color: hsl(var(--popover));
+  color: hsl(var(--popover-foreground));
+  border-color: hsl(var(--border));
+}
+
+/* Avatar */
+.avatar {
+  border-color: hsl(var(--border));
+}
+
+.avatar-fallback {
+  background-color: hsl(var(--secondary));
+  color: hsl(var(--secondary-foreground));
+}
+
+/* Scroll area */
+.scroll-area {
+  border-color: hsl(var(--border));
+}
+
+/* Separator */
+.separator {
+  background-color: hsl(var(--border));
+}
+
+/* Navigation bar */
+.navbar {
+  background-color: hsl(var(--background));
+  border-color: hsl(var(--border));
+}
+
+/* Enhanced dark mode specific styles */
+.dark .btn {
+  border-color: hsl(var(--border) / 0.5);
+}
+
+.dark .card {
+  border-color: hsl(var(--border) / 0.5);
+}
+
+.dark .input {
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+}
+
+.dark .input:focus {
+  border-color: hsl(var(--ring));
+  box-shadow: 0 0 0 2px hsl(var(--ring) / 0.2);
+}
+
+/* Theme-aware gradients */
+.bg-gradient-to-br {
+  background: linear-gradient(to bottom right, hsl(var(--background)), hsl(var(--muted)));
+}
+
+.bg-gradient-to-r {
+  background: linear-gradient(to right, hsl(var(--primary)), hsl(var(--secondary)));
+}
+
+/* Opacity utilities with theme colors */
+.bg-primary\/10 {
+  background-color: hsl(var(--primary) / 0.1);
+}
+
+.bg-secondary\/10 {
+  background-color: hsl(var(--secondary) / 0.1);
+}
+
+.bg-accent\/10 {
+  background-color: hsl(var(--accent) / 0.1);
+}
+
+.text-primary\/80 {
+  color: hsl(var(--primary) / 0.8);
+}
+
+.text-secondary\/80 {
+  color: hsl(var(--secondary) / 0.8);
+}
+
+.text-muted\/80 {
+  color: hsl(var(--muted-foreground) / 0.8);
+}
+
+/* Ensure DaisyUI components respect our theme */
+[data-theme="light"] .btn-primary {
+  background-color: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+}
+
+[data-theme="light"] .btn-secondary {
+  background-color: hsl(var(--secondary));
+  color: hsl(var(--secondary-foreground));
+}
+
+[data-theme="light"] .card {
+  background-color: hsl(var(--card));
+  color: hsl(var(--card-foreground));
+}
+
+[data-theme="dark"] .btn-primary {
+  background-color: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+}
+
+[data-theme="dark"] .btn-secondary {
+  background-color: hsl(var(--secondary));
+  color: hsl(var(--secondary-foreground));
+}
+
+[data-theme="dark"] .card {
+  background-color: hsl(var(--card));
+  color: hsl(var(--card-foreground));
+}
+
+/* Theme-aware components */
+.btn, .card, .input, .label, .badge, .progress, .tabs-trigger, .select-trigger, .dialog-content, .tooltip-content, .avatar, .scroll-area, .separator, .navbar {
 }

@@ -1,3 +1,20 @@
+export interface User {
+  id: number;
+  username: string;
+  email?: string;
+  displayName?: string;
+  profilePicture?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface InsertUser {
+  username: string;
+  email: string;
+  password: string;
+  displayName?: string;
+}
+
 export interface FoodEntryDocument {
   id: number;
   userId: number;
@@ -6,6 +23,8 @@ export interface FoodEntryDocument {
   protein: number;
   carbs: number;
   fat: number;
+  fiber?: number;
+  sugar?: number;
   servingSize: string;
   timestamp: string;
   imageUrl?: string;

@@ -1,0 +1,145 @@
+{
+  "tech_stack": [
+    "TypeScript",
+    "React",
+    "Vite",
+    "Express.js",
+    "MongoDB",
+    "Mongoose",
+    "Tailwind CSS",
+    "DaisyUI",
+    "Framer Motion",
+    "React Query",
+    "Chart.js",
+    "OpenAI API",
+    "Firebase",
+    "Passport.js",
+    "Wouter Router"
+  ],
+  "features": [
+    {
+      "name": "Authentication System",
+      "description": "Complete user authentication with login, registration, and session management using Passport.js and Firebase",
+      "files": [
+        "client/src/pages/auth-page.tsx",
+        "client/src/hooks/use-auth.tsx",
+        "server/auth.ts",
+        "server/middleware.ts"
+      ]
+    },
+    {
+      "name": "Dashboard Interface",
+      "description": "Main dashboard with nutrition tracking, progress visualization, and quick actions using DaisyUI components",
+      "files": [
+        "client/src/pages/Dashboard.tsx",
+        "client/src/components/DashboardBackground.tsx",
+        "client/src/components/DashboardSkeleton.tsx",
+        "client/src/hooks/use-dashboard-data.tsx"
+      ]
+    },
+    {
+      "name": "Food Entry System",
+      "description": "Comprehensive food logging with AI-powered analysis, barcode scanning, and nutritional breakdown",
+      "files": [
+        "client/src/components/FoodEntryForm.tsx",
+        "client/src/components/RecentFoodEntries.tsx",
+        "client/src/components/NutritionInsights.tsx",
+        "server/routes/food-entries.ts"
+      ]
+    },
+    {
+      "name": "AI Coach Assistant",
+      "description": "AI-powered nutrition coach with chat interface, personalized recommendations, and health insights",
+      "files": [
+        "client/src/pages/AICoach.tsx",
+        "client/src/components/AIChatInterface.tsx",
+        "client/src/components/AIRecommendations.tsx",
+        "server/openai.ts"
+      ]
+    },
+    {
+      "name": "Nutrition Tracking & Analytics",
+      "description": "Advanced nutrition tracking with charts, progress monitoring, and detailed analytics",
+      "files": [
+        "client/src/pages/Tracker.tsx",
+        "client/src/pages/Stats.tsx",
+        "client/src/components/NutritionChart.tsx",
+        "client/src/components/NutrientBreakdownChart.tsx",
+        "client/src/components/WeeklyCaloriesChart.tsx",
+        "client/src/components/HealthStats.tsx",
+        "client/src/components/DailySummary.tsx"
+      ]
+    },
+    {
+      "name": "User Profile Management",
+      "description": "User profile management with settings, preferences, and personal information",
+      "files": [
+        "client/src/pages/Profile.tsx",
+        "client/src/components/Header.tsx",
+        "client/src/components/MobileNav.tsx"
+      ]
+    },
+    {
+      "name": "Landing Page & Marketing",
+      "description": "Attractive landing page with feature showcase, testimonials, and call-to-action sections",
+      "files": [
+        "client/src/pages/Home.tsx",
+        "client/src/components/FeatureCard.tsx",
+        "client/src/components/Footer.tsx"
+      ]
+    },
+    {
+      "name": "Theme System",
+      "description": "Complete theme system with dark/light mode toggle and customizable color schemes",
+      "files": [
+        "client/src/components/ThemeProvider.tsx",
+        "client/src/components/ThemeToggle.tsx",
+        "client/src/components/ThemeDemo.tsx",
+        "client/src/pages/ThemeTestPage.tsx"
+      ]
+    },
+    {
+      "name": "Data Management & Storage",
+      "description": "Backend data management with MongoDB, user data storage, and API endpoints",
+      "files": [
+        "server/storage.ts",
+        "server/db.ts",
+        "server/models/index.ts",
+        "server/routes.ts",
+        "server/routes/dashboard.ts",
+        "server/routes/nutrition-goals.ts"
+      ]
+    },
+    {
+      "name": "UI Components Library",
+      "description": "Comprehensive UI component library with DaisyUI integration and custom components",
+      "files": [
+        "client/src/components/ui/",
+        "client/src/components/BackButton.tsx",
+        "client/src/components/CookieConsent.tsx"
+      ]
+    },
+    {
+      "name": "Custom Hooks",
+      "description": "Reusable React hooks for authentication, mobile detection, and toast notifications",
+      "files": [
+        "client/src/hooks/use-auth.tsx",
+        "client/src/hooks/use-mobile.tsx",
+        "client/src/hooks/use-toast.ts",
+        "client/src/hooks/use-dashboard-data.tsx"
+      ]
+    },
+    {
+      "name": "Application Core",
+      "description": "Main application setup, routing, and core configuration",
+      "files": [
+        "client/src/App.tsx",
+        "client/src/main.tsx",
+        "client/src/lib/firebase.ts",
+        "client/src/lib/queryClient.ts",
+        "client/src/lib/utils.ts",
+        "client/src/types/index.ts"
+      ]
+    }
+  ]
+}

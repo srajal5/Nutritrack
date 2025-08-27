@@ -2,7 +2,7 @@ import { Link } from 'wouter';
 
 const Footer = () => {
   return (
-    <footer className="bg-neutral-900 text-white py-12">
+    <footer className="bg-background text-foreground py-12 theme-transition">
       <div className="container mx-auto px-6">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           <div className="md:col-span-1">

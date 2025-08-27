@@ -1,0 +1,18 @@
+{
+  "status": "commited",
+  "type": "frontend",
+  "scope": "codebase",
+  "localEndpoint": "http://localhost:5173",
+  "loginUser": "srajalpuri11",
+  "loginPassword": "test123",
+  "executionArgs": {
+    "projectName": "FoodFitnessTracker",
+    "projectPath": "C:\\Users\\ASUS\\OneDrive\\Desktop\\FoodFitnessTracker",
+    "testIds": [],
+    "additionalInstruction": "Focus on testing the DaisyUI components, authentication flow, dashboard functionality, and AI features. Ensure all interactive elements work properly and the UI is responsive.",
+    "envs": {
+      "API_KEY": "sk-user-KwRBHd7WBMgmQF6HfZoRsBZ8FlI4mRQWS3bmNqA0ZReZIKpbc7oRLOKzz8B8W2FJXK8PXFykRigeC1G-YUMh-R_CxfVgxeRVX5YbzHcBqJCbhckYkkbhqwbgz2lbOGQhH20"
+    }
+  },
+  "proxy": "http://33c9dffc-7c14-4f63-83c2-ac8bb74b3283:yWlBhPGIXiLw3M449lUSBDJk52QGdySJ@tun.testsprite.com:8080"
+}

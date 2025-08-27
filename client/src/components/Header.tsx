@@ -7,7 +7,7 @@ const Header = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
-    <header className="sticky top-0 bg-background border-b border-border shadow-sm z-10">
+    <header className="sticky top-0 glass border-b border-border shadow-sm z-10 theme-transition">
       <div className="container mx-auto px-4 py-4 flex justify-between items-center">
         <div className="flex items-center">
           <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-primary" viewBox="0 0 20 20" fill="currentColor">
@@ -17,10 +17,11 @@ const Header = () => {
         </div>
 
         <nav className="hidden md:flex space-x-6">
-          <a href="#home" className="text-primary font-medium hover:text-primary/80 transition-colors">Home</a>
-          <a href="#tracker" className="text-foreground font-medium hover:text-primary transition-colors">Tracker</a>
-          <a href="#ai-chat" className="text-foreground font-medium hover:text-primary transition-colors">AI Coach</a>
-          <a href="#stats" className="text-foreground font-medium hover:text-primary transition-colors">Stats</a>
+          <Link href="/" className="text-primary font-medium hover:text-primary/80 transition-colors">Home</Link>
+          <Link href="/tracker" className="text-foreground font-medium hover:text-primary transition-colors">Tracker</Link>
+          <Link href="/ai-coach" className="text-foreground font-medium hover:text-primary transition-colors">AI Coach</Link>
+          <Link href="/stats" className="text-foreground font-medium hover:text-primary transition-colors">Stats</Link>
+          <Link href="/theme-demo" className="text-foreground font-medium hover:text-primary transition-colors">Theme Demo</Link>
         </nav>
 
         <div className="flex items-center space-x-4">
@@ -45,18 +46,19 @@ const Header = () => {
       </div>
       
       {mobileMenuOpen && (
-        <div className="md:hidden py-3 px-4 bg-background border-t border-border">
-          <nav className="flex flex-col space-y-3">
-            <a href="#home" className="text-primary font-medium hover:text-primary/80 transition-colors py-2">Home</a>
-            <a href="#tracker" className="text-foreground font-medium hover:text-primary transition-colors py-2">Tracker</a>
-            <a href="#ai-chat" className="text-foreground font-medium hover:text-primary transition-colors py-2">AI Coach</a>
-            <a href="#stats" className="text-foreground font-medium hover:text-primary transition-colors py-2">Stats</a>
-            <Link href="/auth">
-              <Button className="bg-primary hover:bg-primary/90 transition-colors mt-2 w-full">
-                Sign In
-              </Button>
-            </Link>
-          </nav>
+        <div className="md:hidden py-3 px-4 glass border-t border-border theme-transition">
+                      <nav className="flex flex-col space-y-3">
+              <Link href="/" className="text-primary font-medium hover:text-primary/80 transition-colors py-2">Home</Link>
+              <Link href="/tracker" className="text-foreground font-medium hover:text-primary transition-colors py-2">Tracker</Link>
+              <Link href="/ai-coach" className="text-foreground font-medium hover:text-primary transition-colors py-2">AI Coach</Link>
+              <Link href="/stats" className="text-foreground font-medium hover:text-primary transition-colors py-2">Stats</Link>
+              <Link href="/theme-demo" className="text-foreground font-medium hover:text-primary transition-colors py-2">Theme Demo</Link>
+              <Link href="/auth">
+                <Button className="bg-primary hover:bg-primary/90 transition-colors mt-2 w-full">
+                  Sign In
+                </Button>
+              </Link>
+            </nav>
         </div>
       )}
     </header>
