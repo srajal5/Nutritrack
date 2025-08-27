@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
+// Removed unused Progress import
 import { Button } from '@/components/ui/button';
 import { 
   TrendingUp, 
@@ -13,9 +13,7 @@ import {
   Lightbulb,
   Sparkles,
   Apple,
-  Zap,
-  Droplet,
-  Target as TargetIcon
+  Droplet
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
@@ -115,7 +113,6 @@ const NutritionInsights = ({ dailyData, goals, weeklyData, isLoading = false }: 
     const totalMacros = dailyData.protein + dailyData.carbs + dailyData.fat;
     if (totalMacros > 0) {
       const proteinRatio = (dailyData.protein * 4 / dailyData.calories) * 100;
-      const carbRatio = (dailyData.carbs * 4 / dailyData.calories) * 100;
       const fatRatio = (dailyData.fat * 9 / dailyData.calories) * 100;
 
       if (proteinRatio < 10) {

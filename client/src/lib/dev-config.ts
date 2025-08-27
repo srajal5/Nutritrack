@@ -40,7 +40,7 @@ export const devUtils = {
   
   // Hard reload (clear cache)
   hardReload: () => {
-    window.location.reload(true);
+    window.location.reload();
   },
   
   // Log development info
