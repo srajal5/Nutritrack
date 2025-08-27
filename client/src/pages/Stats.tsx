@@ -19,7 +19,7 @@ import {
   Clock,
   Flame
 } from 'lucide-react';
-import { useAuth } from '@/hooks/use-auth';
+// Removed unused useAuth import
 
 interface NutritionData {
   date: string;
@@ -41,8 +41,7 @@ interface Goal {
 }
 
 export default function Stats() {
-  const { user } = useAuth();
-  const [timeRange, setTimeRange] = useState('week');
+  // Removed unused user and timeRange state
   const [selectedMetric, setSelectedMetric] = useState('calories');
 
   // Sample data
@@ -415,7 +414,7 @@ export default function Stats() {
               transition={{ duration: 0.5 }}
             >
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {goals.map((goal, index) => (
+                {goals.map((goal) => (
                   <Card key={goal.id} className="card-shadow theme-transition">
                     <CardHeader>
                       <div className="flex items-center justify-between">
@@ -457,7 +456,7 @@ export default function Stats() {
               transition={{ duration: 0.5 }}
             >
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {achievements.map((achievement, index) => {
+                {achievements.map((achievement) => {
                   const Icon = achievement.icon;
                   return (
                     <Card key={achievement.id} className="card-shadow theme-transition">

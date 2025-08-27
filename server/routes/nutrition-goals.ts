@@ -2,7 +2,6 @@ import { Router } from 'express';
 import { ensureAuthenticated } from '../middleware';
 import storage from '../storage';
 import { z } from 'zod';
-import mongoose from 'mongoose';
 
 const router = Router();
 
@@ -14,7 +13,7 @@ router.get('/', ensureAuthenticated, async (req, res) => {
       return res.status(401).json({ error: 'Not authenticated' });
     }
 
-    const goals = await storage.getNutritionGoalByUserId(new mongoose.Types.ObjectId(userId.toString()));
+    const goals = await storage.getNutritionGoalByUserId(userId);
     if (!goals) {
       // Return default goals if none set
       return res.json({

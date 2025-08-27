@@ -1,5 +1,4 @@
 import express from 'express';
-import mongoose from 'mongoose';
 import storage from '../storage';
 
 const router = express.Router();
@@ -12,7 +11,7 @@ router.get('/:userId', async (req, res) => {
 
     // Get today's food entries using MongoDB
     const todaysEntries = await storage.getDailyFoodEntries(
-      new mongoose.Types.ObjectId(userId),
+      Number(userId),
       today
     );
 
@@ -30,7 +29,7 @@ router.get('/:userId', async (req, res) => {
     );
 
     // Get user's nutrition goals
-    const userGoals = await storage.getNutritionGoalByUserId(new mongoose.Types.ObjectId(userId));
+    const userGoals = await storage.getNutritionGoalByUserId(Number(userId));
 
     const defaultGoals = {
       calories: 2200,
@@ -62,12 +61,12 @@ router.get('/:userId', async (req, res) => {
 
     // Get recent entries (last 10 entries)
     const recentEntries = await storage.getRecentFoodEntries(
-      new mongoose.Types.ObjectId(userId),
+      Number(userId),
       10
     );
 
     // Generate AI recommendations based on data
-    const recommendations = generateRecommendations(dailyTotals, goals, progress);
+    const recommendations = generateRecommendations(goals, progress);
 
     res.json({
       dailyTotals,
@@ -84,7 +83,7 @@ router.get('/:userId', async (req, res) => {
 });
 
 // Generate AI recommendations
-function generateRecommendations(totals: any, goals: any, progress: any) {
+function generateRecommendations(goals: any, progress: any) {
   const recommendations = [];
 
   // Calorie recommendations

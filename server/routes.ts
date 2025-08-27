@@ -8,7 +8,6 @@ import { analyzeFoodEntry, getFitnessResponse, getNutritionRecommendations } fro
 import foodEntriesRouter from './routes/food-entries';
 import nutritionGoalsRouter from './routes/nutrition-goals';
 import dashboardRouter from './routes/dashboard';
-import mongoose from 'mongoose';
 
 // Extend Express.Request to include user
 declare global {
@@ -162,7 +161,7 @@ Possible Allergens: ${analysis.possibleAllergens?.join(', ') || 'None detected'}
         return res.status(401).json({ message: "User not authenticated" });
       }
 
-      const foodEntries = await storage.getFoodEntriesByUserId(new mongoose.Types.ObjectId(req.user.id.toString()));
+      const foodEntries = await storage.getFoodEntriesByUserId(req.user.id);
       res.json(foodEntries || []);
     } catch (error) {
       console.error("Error fetching food entries:", error);
@@ -186,7 +185,7 @@ Possible Allergens: ${analysis.possibleAllergens?.join(', ') || 'None detected'}
         return res.status(400).json({ message: "Invalid date format" });
       }
 
-      const dailyEntries = await storage.getDailyFoodEntries(new mongoose.Types.ObjectId(req.user.id.toString()), date);
+      const dailyEntries = await storage.getDailyFoodEntries(req.user.id, date);
       res.json(dailyEntries || []);
     } catch (error) {
       console.error("Error fetching daily food entries:", error);
@@ -207,7 +206,7 @@ Possible Allergens: ${analysis.possibleAllergens?.join(', ') || 'None detected'}
       }
 
       // Handle both authenticated and anonymous users
-      const userId = req.isAuthenticated() ? req.user?.id : 'anonymous';
+      const userId = req.isAuthenticated() && req.user?.id ? req.user.id : 0; // Use 0 for anonymous users
       
       // Get previous messages for context
       const previousMessages = await storage.getChatMessagesByConversationId(conversationId);
@@ -316,7 +315,7 @@ Possible Allergens: ${analysis.possibleAllergens?.join(', ') || 'None detected'}
         return res.status(400).json({ message: "Invalid user ID" });
       }
 
-      const nutritionGoal = await storage.getNutritionGoalByUserId(new mongoose.Types.ObjectId(userId.toString()));
+      const nutritionGoal = await storage.getNutritionGoalByUserId(userId);
       if (!nutritionGoal) {
         // Return default goals if none exist
         return res.json({
@@ -348,8 +347,8 @@ Possible Allergens: ${analysis.possibleAllergens?.join(', ') || 'None detected'}
       }
 
       // Get user's food entries and nutrition goals
-      const recentEntries = await storage.getRecentFoodEntries(new mongoose.Types.ObjectId(req.user.id.toString()), 10);
-      const nutritionGoal = await storage.getNutritionGoalByUserId(new mongoose.Types.ObjectId(req.user.id.toString()));
+      const recentEntries = await storage.getRecentFoodEntries(req.user.id, 10);
+      const nutritionGoal = await storage.getNutritionGoalByUserId(req.user.id);
       
       if (!nutritionGoal) {
         return res.status(404).json({ message: "Nutrition goals not found" });

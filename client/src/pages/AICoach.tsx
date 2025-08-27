@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { motion } from 'framer-motion';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,23 +14,14 @@ import {
   Brain, 
   MessageSquare, 
   Send, 
-  Sparkles, 
   Target, 
   TrendingUp, 
-  Zap, 
   Heart,
   Lightbulb,
-  BookOpen,
-  Calendar,
   Trophy,
   Clock,
   CheckCircle,
-  AlertCircle,
-  Info,
-  ArrowRight,
-  Play,
-  Pause,
-  RotateCcw
+  ArrowRight
 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import BackButton from '@/components/BackButton';
@@ -60,18 +51,18 @@ interface Recommendation {
   difficulty?: 'beginner' | 'intermediate' | 'advanced';
 }
 
-interface UserProfile {
-  goals: string[];
-  fitnessLevel: 'beginner' | 'intermediate' | 'advanced';
-  dietaryRestrictions: string[];
-  availableTime: string;
-  equipment: string[];
+// Types for fetched data
+interface DailySummary {
+  totalCalories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  remainingCalories: number;
 }
 
 export default function AICoach() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const queryClient = useQueryClient();
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
@@ -97,18 +88,8 @@ export default function AICoach() {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   // Fetch user's nutrition data for personalized recommendations
-  const { data: dailySummary } = useQuery({
+  const { data: dailySummary } = useQuery<DailySummary>({
     queryKey: ['/api/food-entries/daily'],
-    enabled: !!user?.id,
-  });
-
-  const { data: nutritionGoals } = useQuery({
-    queryKey: ['/api/nutrition-goals'],
-    enabled: !!user?.id,
-  });
-
-  const { data: recommendations } = useQuery({
-    queryKey: ['/api/recommendations'],
     enabled: !!user?.id,
   });
 
@@ -251,7 +232,7 @@ export default function AICoach() {
       setMessages(prev => [...prev, aiMessage]);
       setIsTyping(false);
     },
-    onError: (error) => {
+    onError: () => {
       toast({
         title: 'Error',
         description: 'Failed to get AI response. Please try again.',

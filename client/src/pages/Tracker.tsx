@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useState } from 'react';
+import { motion } from 'framer-motion';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
@@ -12,36 +12,26 @@ import BackButton from '@/components/BackButton';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { 
-  Plus, 
-  Search, 
-  Apple, 
-  Droplet, 
-  Zap, 
-  Target, 
-  Calendar,
-  Clock,
-  TrendingUp,
-  BarChart3,
+import {
+  Plus,
+  Search,
+  Apple,
+  Droplet,
+  Zap,
+  Target,
   Camera,
   Barcode,
   Edit,
   Trash2,
-  Filter,
   RefreshCw,
-  CheckCircle,
   AlertCircle,
-  Info,
   ChevronRight,
-  ChevronLeft,
-  MoreHorizontal
+  ChevronLeft
 } from 'lucide-react';
 
 interface DailySummary {
@@ -73,7 +63,6 @@ export default function Tracker() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedMeal, setSelectedMeal] = useState<string>('all');
   const [selectedDate, setSelectedDate] = useState(new Date());
-  const [viewMode, setViewMode] = useState<'daily' | 'weekly'>('daily');
 
   // Fetch daily summary
   const { data: dailySummary, isLoading: summaryLoading } = useQuery<DailySummary>({
@@ -133,13 +122,6 @@ export default function Tracker() {
   // Calculate progress percentages
   const getProgressPercentage = (current: number, goal: number) => {
     return Math.min((current / goal) * 100, 100);
-  };
-
-  // Get color based on progress
-  const getProgressColor = (percentage: number) => {
-    if (percentage >= 90) return 'bg-red-500';
-    if (percentage >= 75) return 'bg-yellow-500';
-    return 'bg-green-500';
   };
 
   // Quick add common foods

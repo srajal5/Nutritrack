@@ -3,7 +3,6 @@ import { ensureAuthenticated } from '../middleware';
 import storage from '../storage';
 import { z } from 'zod';
 import { FoodEntryDocument } from '../storage';
-import mongoose from 'mongoose';
 
 const router = Router();
 

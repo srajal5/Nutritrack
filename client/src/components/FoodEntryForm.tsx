@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
-import { FoodEntryDocument } from '../types';
+// Removed unused FoodEntryDocument import
 import { useAuth } from '@/hooks/use-auth';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
@@ -10,24 +10,22 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { 
   Loader2, 
   Camera, 
-  Upload, 
-  Apple, 
+  // Removed unused: Upload, Apple
   Target, 
   Zap, 
   Droplet,
-  CheckCircle,
-  AlertCircle,
+  // Removed unused: CheckCircle, AlertCircle
   Plus,
-  X,
+  // Removed unused: X
   Flame,
   Barcode,
   Search,
   Sparkles,
-  Clock,
+  // Removed unused: Clock
   Scale,
   Edit
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+// Removed unused: motion, AnimatePresence
 
 // Define the form schema with enhanced validation
 const foodEntrySchema = z.object({
@@ -141,14 +139,15 @@ const FoodEntryForm = () => {
 
   const mutation = useMutation({
     mutationFn: async (data: FoodEntryFormData) => {
-      const response = await apiRequest('/api/food-entries', {
-        method: 'POST',
-        body: JSON.stringify({
+      const response = await apiRequest(
+        'POST',
+        '/api/food-entries',
+        {
           ...data,
           userId: user?.id,
           date: new Date().toISOString(),
-        }),
-      });
+        }
+      );
       return response;
     },
     onSuccess: () => {
@@ -160,7 +159,7 @@ const FoodEntryForm = () => {
       setAnalysisResult(null);
       queryClient.invalidateQueries({ queryKey: ['/api/food-entries'] });
     },
-    onError: (error) => {
+    onError: () => {
       toast({
         title: "Error",
         description: "Failed to add food entry. Please try again.",
