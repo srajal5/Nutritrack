@@ -21,6 +21,9 @@ const handler = serverless(app);
 export default async function (req: any, res: any) {
   await initPromise;
   return handler(req, res);
+
+
+  
 }
 
 
