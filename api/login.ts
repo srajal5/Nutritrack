@@ -1,7 +1,43 @@
 import 'dotenv/config';
-import { connectDB } from '../server/db';
-import storage from '../server/storage';
+import mongoose from 'mongoose';
 import bcrypt from 'bcrypt';
+
+// Define the user schema directly in the API
+const userSchema = new mongoose.Schema({
+  id: { type: Number, required: true, unique: true, default: 1 },
+  username: { type: String, required: true, unique: true },
+  email: { type: String, required: true, unique: true },
+  password: { type: String, required: true },
+  displayName: { type: String },
+  firebaseId: { 
+    type: String, 
+    unique: true,
+    sparse: true
+  },
+  profilePicture: { type: String },
+}, { timestamps: true });
+
+const User = mongoose.model('User', userSchema);
+
+// Database connection function
+async function connectDB() {
+  if (mongoose.connection.readyState === 1) {
+    console.log('MongoDB already connected');
+    return;
+  }
+  
+  if (!process.env.MONGODB_URI) {
+    throw new Error('MONGODB_URI must be set');
+  }
+  
+  await mongoose.connect(process.env.MONGODB_URI);
+  console.log('MongoDB connected successfully');
+}
+
+// Storage functions
+async function getUserByUsername(username: string) {
+  return await User.findOne({ username });
+}
 
 export default async function handler(req: any, res: any) {
   try {
@@ -40,7 +76,7 @@ export default async function handler(req: any, res: any) {
     console.log('Database connected successfully');
 
     console.log('Looking up user...');
-    const user = await storage.getUserByUsername(username);
+    const user = await getUserByUsername(username);
     if (!user) {
       return res.status(401).json({ 
         message: 'Invalid username or password',

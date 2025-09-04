@@ -1,7 +1,57 @@
 import 'dotenv/config';
-import { connectDB } from '../server/db';
-import storage from '../server/storage';
+import mongoose from 'mongoose';
 import bcrypt from 'bcrypt';
+
+// Define the user schema directly in the API
+const userSchema = new mongoose.Schema({
+  id: { type: Number, required: true, unique: true, default: 1 },
+  username: { type: String, required: true, unique: true },
+  email: { type: String, required: true, unique: true },
+  password: { type: String, required: true },
+  displayName: { type: String },
+  firebaseId: { 
+    type: String, 
+    unique: true,
+    sparse: true
+  },
+  profilePicture: { type: String },
+}, { timestamps: true });
+
+const User = mongoose.model('User', userSchema);
+
+// Database connection function
+async function connectDB() {
+  if (mongoose.connection.readyState === 1) {
+    console.log('MongoDB already connected');
+    return;
+  }
+  
+  if (!process.env.MONGODB_URI) {
+    throw new Error('MONGODB_URI must be set');
+  }
+  
+  await mongoose.connect(process.env.MONGODB_URI);
+  console.log('MongoDB connected successfully');
+}
+
+// Storage functions
+async function getUserByUsername(username: string) {
+  return await User.findOne({ username });
+}
+
+async function createUser(userData: any) {
+  const lastUser = await User.findOne().sort({ id: -1 });
+  const newId = lastUser ? lastUser.id + 1 : 1;
+  
+  const userDataWithId = {
+    ...userData,
+    id: newId,
+    firebaseId: userData.firebaseId || `local_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
+  };
+  
+  const user = new User(userDataWithId);
+  return await user.save();
+}
 
 export default async function handler(req: any, res: any) {
   try {
@@ -37,17 +87,27 @@ export default async function handler(req: any, res: any) {
     console.log('Database connected successfully');
 
     console.log('Checking for existing user...');
-    const existingUser = await storage.getUserByUsername(username);
+    const existingUser = await getUserByUsername(username);
+    console.log('Existing user check result:', existingUser ? 'User exists' : 'No existing user');
     if (existingUser) {
       return res.status(400).json({ message: "Username already exists" });
     }
 
-    console.log('Creating new user...');
+    console.log('Hashing password...');
     const hashedPassword = await bcrypt.hash(password, 10);
+    console.log('Password hashed successfully');
     
     const localId = `local_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    console.log('Generated localId:', localId);
     
-    const user = await storage.createUser({
+    console.log('Creating user with data:', {
+      username,
+      email,
+      firebaseId: localId,
+      hasPassword: !!hashedPassword
+    });
+    
+    const user = await createUser({
       username,
       password: hashedPassword,
       email,
@@ -56,7 +116,7 @@ export default async function handler(req: any, res: any) {
       updatedAt: new Date()
     });
 
-    console.log('User created successfully:', user.id);
+    console.log('User created successfully:', { id: user.id, username: user.username });
 
     const { password: _, ...userWithoutPassword } = user;
     res.status(201).json({ 
