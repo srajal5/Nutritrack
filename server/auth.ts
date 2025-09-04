@@ -142,7 +142,7 @@ export function setupAuth(app: Express) {
     }
   });
 
-  app.post("/api/register", async (req, res, _next) => {
+  const registerHandler = async (req: any, res: any, _next: (err?: unknown) => void) => {
     try {
       const { username, password, email } = req.body;
       
@@ -169,9 +169,9 @@ export function setupAuth(app: Express) {
         updatedAt: new Date()
       });
 
-      req.login(user, (err) => {
+      req.login(user, (err: unknown) => {
         if (err) return _next(err);
-        req.session.save((err) => {
+        req.session.save((err: unknown) => {
           if (err) return _next(err);
           const { password, ...userWithoutPassword } = user;
           res.status(201).json({ 
@@ -186,9 +186,11 @@ export function setupAuth(app: Express) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       res.status(500).json({ message: "Registration failed", error: errorMessage });
     }
-  });
+  };
+  app.post("/api/register", registerHandler);
+  app.post("/register", registerHandler);
 
-  app.post("/api/login", async (req, res, _next) => {
+  const loginHandler = async (req: any, res: any, _next: (err?: unknown) => void) => {
     try {
       console.log('Login request received:', {
         body: { ...req.body, password: '[REDACTED]' },
@@ -237,7 +239,7 @@ export function setupAuth(app: Express) {
       }
 
       // If we get here, the credentials are valid
-      req.login(user, (err) => {
+      req.login(user, (err: unknown) => {
         if (err) {
           console.error('Login error:', err);
           return res.status(500).json({ 
@@ -253,7 +255,7 @@ export function setupAuth(app: Express) {
         });
 
         // Save session explicitly
-        req.session.save((err) => {
+        req.session.save((err: unknown) => {
           if (err) {
             console.error('Session save error:', err);
             return res.status(500).json({ 
@@ -291,13 +293,15 @@ export function setupAuth(app: Express) {
         code: 'SERVER_ERROR'
       });
     }
-  });
+  };
+  app.post("/api/login", loginHandler);
+  app.post("/login", loginHandler);
 
-  app.post("/api/logout", (req, res, next) => {
+  const logoutHandler = (req: any, res: any, next: (err?: unknown) => void) => {
     const username = req.user?.username;
-    req.logout((err) => {
+    req.logout((err: unknown) => {
       if (err) return next(err);
-      req.session.destroy((err) => {
+      req.session.destroy((err: unknown) => {
         if (err) return next(err);
         // Clear all session cookies
         res.clearCookie('foodfitness.sid', {
@@ -320,15 +324,19 @@ export function setupAuth(app: Express) {
         res.status(200).json({ message: `${username} logged out successfully` });
       });
     });
-  });
+  };
+  app.post("/api/logout", logoutHandler);
+  app.post("/logout", logoutHandler);
 
-  app.get("/api/user", (req, res) => {
+  const userHandler = (req: any, res: any) => {
     if (!req.isAuthenticated()) {
       return res.status(401).json({ message: "Not authenticated" });
     }
     const { password, ...userWithoutPassword } = req.user as UserDocument;
     res.json({ user: userWithoutPassword });
-  });
+  };
+  app.get("/api/user", userHandler);
+  app.get("/user", userHandler);
 
   // SPA fallback - must be last
   app.get('*', (_req, res) => {
