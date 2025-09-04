@@ -24,7 +24,7 @@ export function setupAuth(app: Express) {
   // Configure CORS with specific options
   const corsOptions = {
     origin: process.env.NODE_ENV === 'production' 
-      ? 'https://your-production-domain.com' 
+      ? [/^https:\/\/.+\.vercel\.app$/, 'https://vercel.app']
       : ['http://localhost:5173', 'http://127.0.0.1:5173', 'http://localhost:3001', 'http://127.0.0.1:3001'],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],

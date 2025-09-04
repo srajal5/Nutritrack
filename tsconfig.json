@@ -1,5 +1,5 @@
 {
-  "include": ["client/src/**/*", "shared/**/*", "server/**/*"],
+  "include": ["client/src/**/*", "shared/**/*", "server/**/*", "api/**/*"],
   "exclude": ["node_modules", "build", "dist", "**/*.test.ts"],
   "compilerOptions": {
     "target": "ES2020",
@@ -36,6 +36,10 @@
     "useDefineForClassFields": true,
     
     // Types
-    "types": ["node", "vite/client"]
+    "types": ["node"],
+    "typeRoots": [
+      "./node_modules/@types",
+      "./types"
+    ]
   }
 }
