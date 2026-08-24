@@ -4,8 +4,8 @@ import { useAuth } from "../hooks/use-auth";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import BackButton from "../components/BackButton";
 import { motion } from "framer-motion";
+import { Link } from "wouter";
 import { 
   User, 
   Lock, 
@@ -16,7 +16,9 @@ import {
   TrendingUp, 
   Target,
   Sparkles,
-  CheckCircle
+  CheckCircle,
+  ArrowLeft,
+  Home
 } from "lucide-react";
 
 // Define the insert user schema locally since shared schema was removed
@@ -117,11 +119,17 @@ export default function AuthPage() {
     <div className="min-h-screen bg-gradient-to-br from-base-100 via-base-200 to-base-300">
       {/* Back Button */}
       <div className="absolute top-6 left-6 z-10">
-        <BackButton showHome={true} />
+        <Link href="/">
+          <button className="btn btn-ghost btn-sm gap-2 bg-background/80 backdrop-blur-sm shadow-md hover:bg-background flex flex-row flex-nowrap items-center h-auto py-2">
+            <ArrowLeft className="h-4 w-4 shrink-0" />
+            <Home className="h-4 w-4 shrink-0" />
+            <span className="whitespace-nowrap">Home</span>
+          </button>
+        </Link>
       </div>
 
-      <div className="container mx-auto px-4 py-8">
-        <div className="flex flex-col lg:flex-row items-center justify-center min-h-screen gap-8">
+      <div className="max-w-7xl mx-auto px-4 py-8 min-h-screen flex items-center justify-center">
+        <div className="flex flex-col lg:flex-row items-center justify-center w-full gap-12">
           {/* Auth Form Section */}
           <motion.div 
             className="w-full max-w-md"
@@ -129,19 +137,19 @@ export default function AuthPage() {
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.6 }}
           >
-            <div className="card bg-base-100 shadow-2xl">
+            <div className="card bg-background shadow-2xl">
               <div className="card-body p-8">
                 {/* Header */}
                 <div className="text-center mb-8">
                   <div className="avatar placeholder mb-4">
-                    <div className="bg-primary text-primary-content rounded-full w-16">
+                    <div className="bg-primary text-primary-content rounded-full w-16 h-16 flex items-center justify-center">
                       <span className="text-2xl">🍎</span>
                     </div>
                   </div>
-                  <h1 className="text-3xl font-bold text-base-content mb-2">
+                  <h1 className="text-3xl font-bold text-foreground mb-2">
                     NutriTrack
                   </h1>
-                  <p className="text-base-content/70">
+                  <p className="text-muted-foreground">
                     {activeTab === "login" 
                       ? "Welcome back! Sign in to continue your journey" 
                       : "Join us and start tracking your nutrition today"
@@ -150,19 +158,19 @@ export default function AuthPage() {
                 </div>
 
                 {/* Tab Navigation */}
-                <div className="tabs tabs-boxed bg-base-200 p-1 mb-6">
+                <div className="flex bg-secondary p-1 mb-6 rounded-box">
                   <button 
-                    className={`tab flex-1 ${activeTab === "login" ? "tab-active" : ""}`}
+                    className={`btn btn-sm flex-1 flex flex-row items-center justify-center gap-2 border-0 ${activeTab === "login" ? "bg-background shadow-sm" : "btn-ghost"}`}
                     onClick={() => setActiveTab("login")}
                   >
-                    <User className="h-4 w-4 mr-2" />
+                    <User className="h-4 w-4" />
                     Login
                   </button>
                   <button 
-                    className={`tab flex-1 ${activeTab === "register" ? "tab-active" : ""}`}
+                    className={`btn btn-sm flex-1 flex flex-row items-center justify-center gap-2 border-0 ${activeTab === "register" ? "bg-background shadow-sm" : "btn-ghost"}`}
                     onClick={() => setActiveTab("register")}
                   >
-                    <Shield className="h-4 w-4 mr-2" />
+                    <Shield className="h-4 w-4" />
                     Register
                   </button>
                 </div>
@@ -221,9 +229,9 @@ export default function AuthPage() {
                             onClick={() => setShowPassword(!showPassword)}
                           >
                             {showPassword ? (
-                              <EyeOff className="h-4 w-4 text-base-content/50" />
+                              <EyeOff className="h-4 w-4 text-muted-foreground" />
                             ) : (
-                              <Eye className="h-4 w-4 text-base-content/50" />
+                              <Eye className="h-4 w-4 text-muted-foreground" />
                             )}
                           </button>
                         </div>
@@ -333,9 +341,9 @@ export default function AuthPage() {
                             onClick={() => setShowPassword(!showPassword)}
                           >
                             {showPassword ? (
-                              <EyeOff className="h-4 w-4 text-base-content/50" />
+                              <EyeOff className="h-4 w-4 text-muted-foreground" />
                             ) : (
-                              <Eye className="h-4 w-4 text-base-content/50" />
+                              <Eye className="h-4 w-4 text-muted-foreground" />
                             )}
                           </button>
                         </div>
@@ -370,9 +378,9 @@ export default function AuthPage() {
                             onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                           >
                             {showConfirmPassword ? (
-                              <EyeOff className="h-4 w-4 text-base-content/50" />
+                              <EyeOff className="h-4 w-4 text-muted-foreground" />
                             ) : (
-                              <Eye className="h-4 w-4 text-base-content/50" />
+                              <Eye className="h-4 w-4 text-muted-foreground" />
                             )}
                           </button>
                         </div>
@@ -435,7 +443,7 @@ export default function AuthPage() {
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.4, delay: 0.4 + index * 0.1 }}
                     >
-                      <div className="bg-white/20 p-3 rounded-full flex-shrink-0">
+                      <div className="bg-card p-3 rounded-full flex-shrink-0">
                         {feature.icon}
                       </div>
                       <div className="text-left">

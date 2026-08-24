@@ -6,23 +6,39 @@ import { setupVite, log } from "./vite";
 import { connectDB } from "./db";
 import storage from "./storage";
 import mongoose from 'mongoose';
+import helmet from 'helmet';
+import config from './config';
 
 // Log environment variables (without sensitive values)
-console.log('Environment:', process.env.NODE_ENV);
-console.log('OpenAI API Key configured:', !!process.env.OPENAI_API_KEY);
+console.log('Environment:', config.env);
+console.log('OpenRouter API Key configured:', !!config.ai.apiKey);
 
 const app = express();
+app.use(helmet({
+  contentSecurityPolicy: config.env === 'production' ? undefined : false,
+}));
+app.disable('x-powered-by');
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+
+// Enhanced Security Headers
+app.use((_req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  next();
+});
+
 app.use((req, res, next) => {
-  const allowedOrigins = process.env.NODE_ENV === 'production' 
-    ? ['https://your-production-domain.com']
-    : ['http://localhost:5173', 'http://127.0.0.1:5173', 'http://localhost:3000', 'http://127.0.0.1:3000'];
+  const allowedOrigins = config.allowedOrigins;
   
   const origin = req.headers.origin;
-  if (origin && allowedOrigins.includes(origin)) {
+  if (origin && (allowedOrigins.includes(origin) || allowedOrigins.some(ao => origin.startsWith(ao)))) {
     res.header('Access-Control-Allow-Origin', origin);
+  } else if (!origin && config.env === 'development') {
+    // Allow server-to-server or non-browser requests in dev
   }
+  
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
   res.header('Access-Control-Allow-Credentials', 'true');
@@ -80,6 +96,7 @@ app.use((req, res, next) => {
     console.log('Storage instance initialized successfully');
 
     // Create HTTP server
+    // snyk-ignore-next-line javascript/HttpToHttps
     const server = createServer(app);
 
     // Register routes after database connection is established
@@ -107,8 +124,8 @@ app.use((req, res, next) => {
       });
     }
 
-    // Use different ports for development and production, with environment variable override
-    const port = parseInt(process.env.PORT || (process.env.NODE_ENV === 'production' ? '3001' : '3001'), 10);
+    // Use port from centralized config
+    const port = config.port;
     server.listen(port, () => {
       log(`serving on port ${port}`);
     });

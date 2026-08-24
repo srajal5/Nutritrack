@@ -55,7 +55,7 @@ export default function HealthStats() {
       {metrics.map((metric, index) => (
         <motion.div
           key={metric.label}
-          className={`relative bg-white/10 backdrop-blur-sm p-4 rounded-lg text-white w-48 ${
+          className={`relative bg-card backdrop-blur-sm p-4 rounded-lg text-primary-foreground w-48 ${
             index === activeMetric ? 'scale-110' : 'scale-100'
           } transition-all duration-300`}
           initial={{ opacity: 0, x: 50 }}
@@ -70,7 +70,7 @@ export default function HealthStats() {
             {metric.value}
             <span className="text-sm ml-1 opacity-75">{metric.unit}</span>
           </div>
-          <div className="h-2 bg-white/20 rounded-full overflow-hidden">
+          <div className="h-2 bg-card rounded-full overflow-hidden">
             <motion.div
               className={`h-full ${metric.color.replace('text-', 'bg-')}`}
               initial={{ width: 0 }}

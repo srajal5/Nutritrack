@@ -41,25 +41,46 @@ export async function setupVite(app: Express, server: Server) {
   });
 
   app.use(vite.middlewares);
+  
+  // Pre-load the template to avoid repeated FS operations and resource exhaustion
+  const clientTemplatePath = path.resolve(
+    import.meta.dirname,
+    "..",
+    "client",
+    "index.html",
+  );
+  
+  let baseTemplate = "";
+  try {
+    baseTemplate = fs.readFileSync(clientTemplatePath, "utf-8");
+  } catch (err) {
+    log(`Warning: Could not pre-load index.html: ${err}`, "vite");
+  }
+
   app.use("*", async (req, res, next) => {
-    const url = req.originalUrl;
+    // Stricter URL sanitization: only allow alphanumeric, slashes, and basic path chars
+    // This prevents XSS via the URL parameter in transformIndexHtml
+    const url = req.originalUrl.split('?')[0].replace(/[^\w\/\.\-]/g, '');
 
     try {
-      const clientTemplate = path.resolve(
-        import.meta.dirname,
-        "..",
-        "client",
-        "index.html",
-      );
+      if (!baseTemplate) {
+        throw new Error("Index template not loaded. Check if client/index.html exists.");
+      }
+      let template = baseTemplate;
 
-      // always reload the index.html file from disk incase it changes
-      let template = await fs.promises.readFile(clientTemplate, "utf-8");
-      template = template.replace(
+      const transformedTemplate = template.replace(
         `src="/src/main.tsx"`,
         `src="/src/main.tsx?v=${nanoid()}"`,
       );
-      const page = await vite.transformIndexHtml(url, template);
-      res.status(200).set({ "Content-Type": "text/html" }).end(page);
+
+      const page = await vite.transformIndexHtml(url, transformedTemplate);
+      res.status(200)
+        .set({ 
+          "Content-Type": "text/html",
+          "X-Content-Type-Options": "nosniff",
+          "Content-Security-Policy": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:;"
+        })
+        .end(page);
     } catch (e) {
       vite.ssrFixStacktrace(e as Error);
       next(e);

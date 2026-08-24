@@ -52,9 +52,54 @@ export interface NutritionGoalDocument extends mongoose.Document {
   proteinGoal: number;
   carbGoal: number;
   fatGoal: number;
+  fiberGoal: number;
+  sugarGoal: number;
   createdAt: Date;
   updatedAt: Date;
 }
+
+export interface UserProfileDocument extends mongoose.Document {
+  id: number;
+  userId: number;
+  isCompleted: boolean;
+  profile: {
+    age?: number;
+    gender?: string;
+    heightCm?: number;
+    weightKg?: number;
+    targetWeightKg?: number;
+    activityLevel?: string;
+    fitnessLevel?: string;
+  };
+  goal: {
+    primaryGoal?: string;
+    secondaryGoals?: string[];
+    targetDate?: Date;
+    desiredOutcome?: string;
+  };
+  workout: {
+    daysPerWeek?: number;
+    location?: string;
+    equipment?: string[];
+  };
+  nutrition: {
+    dietaryPreference?: string;
+    allergies?: string[];
+    dislikedFoods?: string[];
+    preferredFoods?: string[];
+    calorieTarget?: number;
+    proteinTarget?: number;
+  };
+  aiPlan: {
+    summary?: string;
+    weeklyWorkoutPlan?: string[];
+    nutritionGuidelines?: string[];
+    dailyTargets?: Record<string, any>;
+  };
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 
 // Input types for creating/updating documents
 export type UserInput = Omit<UserDocument, keyof mongoose.Document | 'id'> & {
@@ -74,6 +119,9 @@ export type ChatMessageInput = {
   updatedAt: Date;
 };
 export type NutritionGoalInput = Omit<NutritionGoalDocument, keyof mongoose.Document | 'createdAt' | 'updatedAt'>;
+export type UserProfileInput = Omit<UserProfileDocument, keyof mongoose.Document | 'createdAt' | 'updatedAt' | 'id'> & {
+  id?: number;
+};
 
 // Schemas
 const userSchema = new mongoose.Schema<UserDocument>({
@@ -126,13 +174,57 @@ const nutritionGoalSchema = new mongoose.Schema<NutritionGoalDocument>({
   proteinGoal: { type: Number, required: true },
   carbGoal: { type: Number, required: true },
   fatGoal: { type: Number, required: true },
+  fiberGoal: { type: Number, required: true, default: 25 },
+  sugarGoal: { type: Number, required: true, default: 50 },
 }, { timestamps: true });
+
+const userProfileSchema = new mongoose.Schema<UserProfileDocument>({
+  id: { type: Number, required: true, unique: true },
+  userId: { type: Number, required: true, unique: true },
+  isCompleted: { type: Boolean, default: false },
+  profile: {
+    age: Number,
+    gender: String,
+    heightCm: Number,
+    weightKg: Number,
+    targetWeightKg: Number,
+    activityLevel: String,
+    fitnessLevel: String,
+  },
+  goal: {
+    primaryGoal: String,
+    secondaryGoals: [String],
+    targetDate: Date,
+    desiredOutcome: String,
+  },
+  workout: {
+    daysPerWeek: Number,
+    location: String,
+    equipment: [String],
+  },
+  nutrition: {
+    dietaryPreference: String,
+    allergies: [String],
+    dislikedFoods: [String],
+    preferredFoods: [String],
+    calorieTarget: Number,
+    proteinTarget: Number,
+  },
+  aiPlan: {
+    summary: String,
+    weeklyWorkoutPlan: [String],
+    nutritionGuidelines: [String],
+    dailyTargets: mongoose.Schema.Types.Mixed,
+  }
+}, { timestamps: true });
+
 
 // Models
 const User = mongoose.model<UserDocument>('User', userSchema);
 const FoodEntry = mongoose.model<FoodEntryDocument>('FoodEntry', foodEntrySchema);
 const ChatMessage = mongoose.model<ChatMessageDocument>('ChatMessage', chatMessageSchema);
 const NutritionGoal = mongoose.model<NutritionGoalDocument>('NutritionGoal', nutritionGoalSchema);
+const UserProfile = mongoose.model<UserProfileDocument>('UserProfile', userProfileSchema);
 
 // Storage interface
 interface IStorage {
@@ -144,6 +236,8 @@ interface IStorage {
   updateUser(id: number, userData: Partial<UserInput>): Promise<UserDocument | null>;
   deleteUser(id: number): Promise<boolean>;
   getUser(id: number): Promise<UserDocument | null>;
+  getUserProfile(userId: number): Promise<UserProfileDocument | null>;
+  updateUserProfile(userId: number, profileData: Partial<UserProfileInput>): Promise<UserProfileDocument>;
 
   // Food entry operations
   createFoodEntry(foodData: FoodEntryInput): Promise<FoodEntryDocument>;
@@ -224,6 +318,29 @@ class Storage implements IStorage {
 
   async getUser(id: number): Promise<UserDocument | null> {
     return await this.userModel.findOne({ id });
+  }
+
+  async getUserProfile(userId: number): Promise<UserProfileDocument | null> {
+    return await UserProfile.findOne({ userId });
+  }
+
+  async updateUserProfile(userId: number, profileData: Partial<UserProfileInput>): Promise<UserProfileDocument> {
+    let profile = await UserProfile.findOne({ userId });
+    
+    if (!profile) {
+      const lastProfile = await UserProfile.findOne().sort({ id: -1 });
+      const newId = lastProfile ? lastProfile.id + 1 : 1;
+      
+      profile = new UserProfile({
+        ...profileData,
+        userId,
+        id: newId
+      });
+    } else {
+      Object.assign(profile, profileData);
+    }
+    
+    return await profile.save();
   }
 
   // Food entry operations
@@ -339,9 +456,8 @@ class Storage implements IStorage {
         { new: true }
       ) as NutritionGoalDocument;
     } else {
-      // Create new goal
-      const nutritionGoal = new this.nutritionGoalModel(goalData);
-      return await nutritionGoal.save();
+      // Create new goal using the existing method which handles ID generation
+      return await this.createNutritionGoal(goalData);
     }
   }
 

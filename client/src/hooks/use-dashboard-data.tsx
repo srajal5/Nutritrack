@@ -7,6 +7,8 @@ export interface DailySummary {
   protein: number;
   carbs: number;
   fat: number;
+  fiber: number;
+  sugar: number;
   remainingCalories: number;
 }
 
@@ -27,6 +29,8 @@ export interface NutritionGoals {
   protein: number;
   carbs: number;
   fat: number;
+  fiberGoal: number;
+  sugarGoal: number;
 }
 
 export interface DashboardData {

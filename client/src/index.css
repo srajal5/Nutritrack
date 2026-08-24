@@ -19,14 +19,11 @@
     color: hsl(var(--foreground));
   }
 
-  /* Smooth transitions for all theme changes */
-  * {
-    transition: none;
-  }
-  
-  /* Only apply transitions when theme-transition class is present */
-  .theme-transition * {
-    transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+  /* Smooth transitions for theme changes */
+  body, .card, .navbar, .btn, .input, .badge, .tabs-boxed, .select-content, .dialog-content, .tooltip-content {
+    transition-property: background-color, border-color, color, fill, stroke;
+    transition-duration: 0.4s;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
   }
 }
 
@@ -34,9 +31,9 @@
 :root {
   --background: 0 0% 98%;
   --foreground: 222.2 84% 4.9%;
-  --card: 0 0% 98%;
+  --card: 0 0% 100%;
   --card-foreground: 222.2 84% 4.9%;
-  --popover: 0 0% 98%;
+  --popover: 0 0% 100%;
   --popover-foreground: 222.2 84% 4.9%;
   --primary: 142.1 76.2% 36.3%;
   --primary-foreground: 355.7 100% 97.3%;
@@ -51,16 +48,19 @@
   --border: 214.3 31.8% 91.4%;
   --input: 214.3 31.8% 91.4%;
   --ring: 142.1 76.2% 36.3%;
-  --radius: 0.5rem;
+  --radius: 1rem;
+  --rounded-box: 1.5rem;
+  --rounded-btn: 2rem;
+  --rounded-badge: 1.9rem;
 }
 
 /* Dark Theme */
 .dark {
   --background: 222.2 84% 4.9%;
   --foreground: 210 40% 98%;
-  --card: 222.2 84% 4.9%;
+  --card: 222.2 47% 11%;
   --card-foreground: 210 40% 98%;
-  --popover: 222.2 84% 4.9%;
+  --popover: 222.2 47% 11%;
   --popover-foreground: 210 40% 98%;
   --primary: 142.1 70.6% 45.3%;
   --primary-foreground: 144.9 80.4% 10%;
@@ -75,15 +75,19 @@
   --border: 217.2 32.6% 17.5%;
   --input: 217.2 32.6% 17.5%;
   --ring: 142.1 70.6% 45.3%;
+  --radius: 1rem;
+  --rounded-box: 1.5rem;
+  --rounded-btn: 2rem;
+  --rounded-badge: 1.9rem;
 }
 
 /* DaisyUI Theme Overrides */
 [data-theme="light"] {
   --background: 0 0% 98%;
   --foreground: 222.2 84% 4.9%;
-  --card: 0 0% 98%;
+  --card: 0 0% 100%;
   --card-foreground: 222.2 84% 4.9%;
-  --popover: 0 0% 98%;
+  --popover: 0 0% 100%;
   --popover-foreground: 222.2 84% 4.9%;
   --primary: 142.1 76.2% 36.3%;
   --primary-foreground: 355.7 100% 97.3%;
@@ -98,14 +102,18 @@
   --border: 214.3 31.8% 91.4%;
   --input: 214.3 31.8% 91.4%;
   --ring: 142.1 76.2% 36.3%;
+  --radius: 1rem;
+  --rounded-box: 1.5rem;
+  --rounded-btn: 2rem;
+  --rounded-badge: 1.9rem;
 }
 
 [data-theme="dark"] {
   --background: 222.2 84% 4.9%;
   --foreground: 210 40% 98%;
-  --card: 222.2 84% 4.9%;
+  --card: 222.2 47% 11%;
   --card-foreground: 210 40% 98%;
-  --popover: 222.2 84% 4.9%;
+  --popover: 222.2 47% 11%;
   --popover-foreground: 210 40% 98%;
   --primary: 142.1 70.6% 45.3%;
   --primary-foreground: 144.9 80.4% 10%;
@@ -120,12 +128,13 @@
   --border: 217.2 32.6% 17.5%;
   --input: 217.2 32.6% 17.5%;
   --ring: 142.1 70.6% 45.3%;
+  --radius: 1rem;
+  --rounded-box: 1.5rem;
+  --rounded-btn: 2rem;
+  --rounded-badge: 1.9rem;
 }
 
-/* Enhanced theme transition animations */
-.theme-transition {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
-}
+/* Enhanced theme transition animations removed in favor of targeted transitions above */
 
 /* DaisyUI Component Theme Overrides */
 .btn {
@@ -192,15 +201,20 @@
 }
 
 /* Form elements */
-.input {
+.input, .textarea, .select {
   background-color: hsl(var(--background));
   color: hsl(var(--foreground));
   border-color: hsl(var(--border));
 }
 
-.input:focus {
+.input:focus, .textarea:focus, .select:focus {
   border-color: hsl(var(--ring));
   box-shadow: 0 0 0 2px hsl(var(--ring) / 0.2);
+  outline: none;
+}
+
+.input::placeholder, .textarea::placeholder {
+  color: hsl(var(--muted-foreground));
 }
 
 .label {
@@ -217,11 +231,33 @@
 /* Progress bars */
 .progress {
   background-color: hsl(var(--secondary));
+  border-radius: var(--radius);
+  overflow: hidden;
 }
 
-.progress-indicator {
-  background-color: hsl(var(--primary));
+.progress::-webkit-progress-bar {
+  background-color: hsl(var(--secondary));
+  border-radius: var(--radius);
 }
+
+.progress::-webkit-progress-value {
+  background-color: hsl(var(--primary));
+  border-radius: var(--radius);
+  transition: width 0.3s ease;
+}
+
+.progress::-moz-progress-bar {
+  background-color: hsl(var(--primary));
+  border-radius: var(--radius);
+  transition: width 0.3s ease;
+}
+
+.progress-success::-webkit-progress-value { background-color: #22c55e; }
+.progress-success::-moz-progress-bar { background-color: #22c55e; }
+.progress-warning::-webkit-progress-value { background-color: #eab308; }
+.progress-warning::-moz-progress-bar { background-color: #eab308; }
+.progress-error::-webkit-progress-value { background-color: #ef4444; }
+.progress-error::-moz-progress-bar { background-color: #ef4444; }
 
 /* Tabs */
 .tabs-trigger {
@@ -320,16 +356,6 @@
   border-color: hsl(var(--border) / 0.5);
 }
 
-.dark .input {
-  background-color: hsl(var(--background));
-  color: hsl(var(--foreground));
-}
-
-.dark .input:focus {
-  border-color: hsl(var(--ring));
-  box-shadow: 0 0 0 2px hsl(var(--ring) / 0.2);
-}
-
 /* Theme-aware gradients */
 .bg-gradient-to-br {
   background: linear-gradient(to bottom right, hsl(var(--background)), hsl(var(--muted)));
@@ -396,5 +422,28 @@
 }
 
 /* Theme-aware components */
-.btn, .card, .input, .label, .badge, .progress, .tabs-trigger, .select-trigger, .dialog-content, .tooltip-content, .avatar, .scroll-area, .separator, .navbar {
+.btn {
+  border-radius: 9999px;
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
+}
+.btn-sm {
+  padding-left: 1.25rem;
+  padding-right: 1.25rem;
+}
+.btn-lg {
+  padding-left: 2rem;
+  padding-right: 2rem;
+}
+.card {
+  border-radius: var(--rounded-box);
+}
+.input, .textarea, .select, .select-trigger, .select-content {
+  border-radius: var(--rounded-btn);
+}
+.badge {
+  border-radius: var(--rounded-badge);
+}
+.dialog-content {
+  border-radius: var(--rounded-box);
 }

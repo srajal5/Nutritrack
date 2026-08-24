@@ -9,7 +9,7 @@ const NutritionHighlights = () => {
 
   // Fetch food entries
   const { data: foodEntries = [], isLoading } = useQuery<FoodEntryDocument[]>({
-    queryKey: [`/api/food-entries?userId=${userId}`],
+    queryKey: ['/api/food-entries'],
     queryFn: getQueryFn({ on401: "throw" }),
     enabled: !!userId,
     initialData: []
@@ -17,7 +17,7 @@ const NutritionHighlights = () => {
   
   // Fetch nutrition goals
   const { data: nutritionGoal } = useQuery<NutritionGoalDocument>({
-    queryKey: [`/api/nutrition-goals?userId=${userId}`],
+    queryKey: ['/api/nutrition-goals'],
     queryFn: getQueryFn({ on401: "throw" }),
     enabled: !!userId
   });
@@ -35,7 +35,7 @@ const NutritionHighlights = () => {
     
     // Group entries by day
     const entriesByDay = foodEntries.reduce((acc, entry) => {
-      const date = new Date(entry.timestamp).toDateString();
+      const date = new Date(entry.entryDate || entry.createdAt || new Date()).toDateString();
       if (!acc[date]) {
         acc[date] = [];
       }
@@ -80,7 +80,7 @@ const NutritionHighlights = () => {
   
   if (isLoading) {
     return (
-      <div className="bg-white rounded-xl shadow-md p-6 animate-pulse">
+      <div className="bg-card text-card-foreground rounded-xl shadow-md p-6 animate-pulse">
         <div className="h-6 bg-slate-200 rounded mb-4"></div>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
           {[...Array(4)].map((_, i) => (
@@ -98,24 +98,24 @@ const NutritionHighlights = () => {
   }
   
   return (
-    <div className="bg-white rounded-xl shadow-md p-6">
+    <div className="bg-card text-card-foreground rounded-xl shadow-md p-6">
       <h3 className="font-heading text-xl font-semibold mb-4">Nutrition Highlights</h3>
       
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <div className="bg-neutral-50 rounded-lg p-4 text-center">
-          <p className="text-sm text-neutral-500 mb-1">Avg. Daily Calories</p>
+          <p className="text-sm text-foreground mb-1">Avg. Daily Calories</p>
           <p className="font-mono text-xl font-semibold">{Math.round(avgCalories)}</p>
         </div>
         <div className="bg-neutral-50 rounded-lg p-4 text-center">
-          <p className="text-sm text-neutral-500 mb-1">Protein Goal</p>
+          <p className="text-sm text-foreground mb-1">Protein Goal</p>
           <p className="font-mono text-xl font-semibold">{proteinGoalPct}%</p>
         </div>
         <div className="bg-neutral-50 rounded-lg p-4 text-center">
-          <p className="text-sm text-neutral-500 mb-1">Water Intake</p>
+          <p className="text-sm text-foreground mb-1">Water Intake</p>
           <p className="font-mono text-xl font-semibold">{waterIntake}L</p>
         </div>
         <div className="bg-neutral-50 rounded-lg p-4 text-center">
-          <p className="text-sm text-neutral-500 mb-1">Sugar Intake</p>
+          <p className="text-sm text-foreground mb-1">Sugar Intake</p>
           <p className="font-mono text-xl font-semibold">{sugarIntake}g</p>
         </div>
       </div>
@@ -131,7 +131,7 @@ const NutritionHighlights = () => {
             </div>
             <div>
               <p className="font-medium">Protein Goal Champion</p>
-              <p className="text-sm text-neutral-600">Met protein goals 5 days in a row</p>
+              <p className="text-sm text-foreground">Met protein goals 5 days in a row</p>
             </div>
           </div>
           <div className="flex items-center p-3 bg-blue-50 rounded-lg">
@@ -142,7 +142,7 @@ const NutritionHighlights = () => {
             </div>
             <div>
               <p className="font-medium">Hydration Hero</p>
-              <p className="text-sm text-neutral-600">Reached water intake goals for 7 days</p>
+              <p className="text-sm text-foreground">Reached water intake goals for 7 days</p>
             </div>
           </div>
         </div>

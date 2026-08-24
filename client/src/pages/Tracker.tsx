@@ -7,7 +7,6 @@ import { useAuth } from '@/hooks/use-auth';
 import { FoodEntryDocument } from '@/types';
 import FoodEntryForm from '@/components/FoodEntryForm';
 import NutritionInsights from '@/components/NutritionInsights';
-import BackButton from '@/components/BackButton';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -39,6 +38,8 @@ interface DailySummary {
   protein: number;
   carbs: number;
   fat: number;
+  fiber: number;
+  sugar: number;
   remainingCalories: number;
 }
 
@@ -52,6 +53,8 @@ interface NutritionGoals {
   proteinGoal: number;
   carbGoal: number;
   fatGoal: number;
+  fiberGoal: number;
+  sugarGoal: number;
 }
 
 export default function Tracker() {
@@ -100,6 +103,10 @@ export default function Tracker() {
       });
       queryClient.invalidateQueries({ queryKey: ['/api/food-entries'] });
       queryClient.invalidateQueries({ queryKey: ['/api/food-entries/daily'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/food-entries/weekly'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/food-entries/recent'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/stats'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/dashboard'] });
     },
     onError: () => {
       toast({
@@ -114,7 +121,7 @@ export default function Tracker() {
   const filteredEntries = foodEntries?.filter(entry => {
     const matchesSearch = entry.name.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesMeal = selectedMeal === 'all' || entry.mealType === selectedMeal;
-    const entryDate = new Date(entry.timestamp);
+    const entryDate = new Date(entry.entryDate || entry.createdAt || new Date());
     const matchesDate = entryDate.toDateString() === selectedDate.toDateString();
     return matchesSearch && matchesMeal && matchesDate;
   }) || [];
@@ -124,43 +131,7 @@ export default function Tracker() {
     return Math.min((current / goal) * 100, 100);
   };
 
-  // Quick add common foods
-  const quickFoods = [
-    { name: 'Apple', calories: 95, protein: 0.5, carbs: 25, fat: 0.3, mealType: 'snack' },
-    { name: 'Banana', calories: 105, protein: 1.3, carbs: 27, fat: 0.4, mealType: 'snack' },
-    { name: 'Chicken Breast', calories: 165, protein: 31, carbs: 0, fat: 3.6, mealType: 'lunch' },
-    { name: 'Salmon', calories: 208, protein: 25, carbs: 0, fat: 12, mealType: 'dinner' },
-    { name: 'Greek Yogurt', calories: 59, protein: 10, carbs: 3.6, fat: 0.4, mealType: 'breakfast' },
-    { name: 'Quinoa', calories: 120, protein: 4.4, carbs: 22, fat: 1.9, mealType: 'lunch' },
-  ];
 
-  const handleQuickAdd = async (food: typeof quickFoods[0]) => {
-    try {
-      await apiRequest('POST', '/api/food-entries', {
-        name: food.name,
-        calories: food.calories,
-        protein: food.protein,
-        carbs: food.carbs,
-        fat: food.fat,
-        mealType: food.mealType,
-        servingSize: '1 serving',
-      });
-      
-      toast({
-        title: 'Food added!',
-        description: `${food.name} has been added to your log.`,
-      });
-      
-      queryClient.invalidateQueries({ queryKey: ['/api/food-entries'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/food-entries/daily'] });
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to add food entry. Please try again.',
-        variant: 'destructive',
-      });
-    }
-  };
 
   const handleDeleteEntry = (entryId: number) => {
     deleteEntryMutation.mutate(entryId);
@@ -183,7 +154,7 @@ export default function Tracker() {
 
   if (!user) {
     return (
-      <div className="min-h-screen gradient-bg theme-transition flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <Card className="w-full max-w-md">
           <CardContent className="p-6 text-center">
             <AlertCircle className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
@@ -196,8 +167,8 @@ export default function Tracker() {
   }
 
   return (
-    <div className="min-h-screen gradient-bg theme-transition">
-      <div className="container mx-auto px-4 py-8">
+    <div className="min-h-screen bg-background">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-20 md:pb-8">
         {/* Header */}
         <motion.div 
           className="mb-8"
@@ -207,7 +178,6 @@ export default function Tracker() {
         >
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-4">
-              <BackButton />
               <div>
                 <h1 className="text-3xl font-bold text-foreground mb-2">Food Tracker</h1>
                 <p className="text-muted-foreground">Track your nutrition and stay on top of your health goals</p>
@@ -238,7 +208,7 @@ export default function Tracker() {
                     </DialogDescription>
                   </DialogHeader>
                   <div className="mt-4">
-                    <FoodEntryForm />
+                    <FoodEntryForm onSuccess={() => setShowAddDialog(false)} />
                   </div>
                 </DialogContent>
               </Dialog>
@@ -281,7 +251,7 @@ export default function Tracker() {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Main Content */}
-          <div className="lg:col-span-2 space-y-6">
+          <div className="lg:col-span-2 space-y-6 min-w-0">
             {/* Daily Summary Card */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -407,44 +377,108 @@ export default function Tracker() {
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
+
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div className="text-center p-4 rounded-lg bg-green-500/10 hover:bg-green-500/20 transition-colors cursor-pointer">
+                            <div className="flex items-center justify-center mb-2">
+                              <Apple className="h-5 w-5 text-green-500" />
+                            </div>
+                            <div className="text-lg font-semibold text-foreground">{dailySummary?.fiber || 0}g</div>
+                            <div className="text-xs text-muted-foreground">Fiber</div>
+                            {nutritionGoals && (
+                              <div className="text-xs text-green-600 dark:text-green-400">
+                                {Math.round(getProgressPercentage(dailySummary?.fiber || 0, nutritionGoals.fiberGoal || 25))}%
+                              </div>
+                            )}
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Fiber: {dailySummary?.fiber || 0}g / {nutritionGoals?.fiberGoal || 25}g</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div className="text-center p-4 rounded-lg bg-red-500/10 hover:bg-red-500/20 transition-colors cursor-pointer">
+                            <div className="flex items-center justify-center mb-2">
+                              <Droplet className="h-5 w-5 text-red-500" />
+                            </div>
+                            <div className="text-lg font-semibold text-foreground">{dailySummary?.sugar || 0}g</div>
+                            <div className="text-xs text-muted-foreground">Sugar</div>
+                            {nutritionGoals && (
+                              <div className="text-xs text-red-600 dark:text-red-400">
+                                {Math.round(getProgressPercentage(dailySummary?.sugar || 0, nutritionGoals.sugarGoal || 50))}%
+                              </div>
+                            )}
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Sugar: {dailySummary?.sugar || 0}g / {nutritionGoals?.sugarGoal || 50}g</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                   </div>
                 </CardContent>
               </Card>
             </motion.div>
 
-            {/* Quick Add Foods */}
+            {/* Food Logging Input Area */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.2 }}
             >
-              <Card className="card-shadow theme-transition">
-                <CardHeader>
-                  <CardTitle className="text-foreground">Quick Add</CardTitle>
-                  <CardDescription className="text-muted-foreground">
-                    Add common foods with one click
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                    {quickFoods.map((food) => (
-                      <Button
-                        key={food.name}
-                        variant="outline"
-                        size="sm"
-                        className="h-auto p-3 flex flex-col items-start"
-                        onClick={() => handleQuickAdd(food)}
-                      >
-                        <span className="font-medium text-sm">{food.name}</span>
-                        <span className="text-xs text-muted-foreground">{food.calories} cal</span>
-                        <Badge variant="secondary" className="text-xs mt-1">
-                          {food.mealType}
-                        </Badge>
-                      </Button>
-                    ))}
+              <div className="space-y-4">
+                {/* Search Bar */}
+                <div className="relative group">
+                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                    <Search className="h-5 w-5 text-muted-foreground group-focus-within:text-primary transition-colors" />
                   </div>
-                </CardContent>
-              </Card>
+                  <Input
+                    type="text"
+                    className="w-full pl-12 pr-4 py-6 text-lg rounded-2xl border-border bg-card shadow-sm hover:border-primary/50 focus:border-primary transition-all"
+                    placeholder="Search foods, scan barcode..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                  <div className="absolute inset-y-0 right-2 flex items-center">
+                    <Button variant="ghost" size="icon" className="rounded-xl" onClick={() => setShowAddDialog(true)}>
+                      <Barcode className="h-5 w-5 text-muted-foreground hover:text-primary transition-colors" />
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Quick Actions */}
+                <div className="grid grid-cols-2 gap-4">
+                  <Button 
+                    variant="outline" 
+                    className="py-6 rounded-2xl bg-card border-border hover:bg-primary/5 hover:border-primary/30 transition-all flex items-center justify-center gap-2"
+                    onClick={() => setShowAddDialog(true)}
+                  >
+                    <div className="bg-primary/10 p-2 rounded-full">
+                      <Camera className="h-5 w-5 text-primary" />
+                    </div>
+                    <span className="font-semibold">Scan Meal</span>
+                  </Button>
+                  
+                  <Button 
+                    variant="outline" 
+                    className="py-6 rounded-2xl bg-card border-border hover:bg-primary/5 hover:border-primary/30 transition-all flex items-center justify-center gap-2"
+                    onClick={() => {
+                      toast({ title: "Coming soon", description: "Voice logging will be available in a future update." });
+                    }}
+                  >
+                    <div className="bg-blue-500/10 p-2 rounded-full">
+                      <span className="text-xl leading-none">🎤</span>
+                    </div>
+                    <span className="font-semibold">Voice Log</span>
+                  </Button>
+                </div>
+              </div>
             </motion.div>
 
             {/* Food Entries List */}
@@ -452,137 +486,106 @@ export default function Tracker() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.3 }}
+              className="mt-8"
             >
-              <Card className="card-shadow theme-transition">
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <CardTitle className="text-foreground">Food Entries</CardTitle>
-                      <CardDescription className="text-muted-foreground">
-                        {filteredEntries.length} entries for {formatDate(selectedDate)}
-                      </CardDescription>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-semibold text-foreground">Recent</h2>
+                <div className="flex gap-2">
+                  <Select value={selectedMeal} onValueChange={setSelectedMeal}>
+                    <SelectTrigger className="w-32 rounded-xl h-9">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Meals</SelectItem>
+                      <SelectItem value="breakfast">Breakfast</SelectItem>
+                      <SelectItem value="lunch">Lunch</SelectItem>
+                      <SelectItem value="dinner">Dinner</SelectItem>
+                      <SelectItem value="snack">Snack</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {entriesLoading ? (
+                <div className="space-y-4">
+                  {[...Array(3)].map((_, i) => (
+                    <div key={i} className="animate-pulse">
+                      <div className="h-20 bg-muted rounded-2xl"></div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <div className="relative">
-                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input
-                          placeholder="Search foods..."
-                          value={searchTerm}
-                          onChange={(e) => setSearchTerm(e.target.value)}
-                          className="pl-10 w-48"
-                        />
-                      </div>
-                      <Select value={selectedMeal} onValueChange={setSelectedMeal}>
-                        <SelectTrigger className="w-32">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">All Meals</SelectItem>
-                          <SelectItem value="breakfast">Breakfast</SelectItem>
-                          <SelectItem value="lunch">Lunch</SelectItem>
-                          <SelectItem value="dinner">Dinner</SelectItem>
-                          <SelectItem value="snack">Snack</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
+                  ))}
+                </div>
+              ) : filteredEntries.length === 0 ? (
+                <div className="text-center py-12 bg-card rounded-3xl border border-border">
+                  <div className="bg-primary/10 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Apple className="h-8 w-8 text-primary" />
                   </div>
-                </CardHeader>
-                <CardContent>
-                  {entriesLoading ? (
-                    <div className="space-y-4">
-                      {[...Array(3)].map((_, i) => (
-                        <div key={i} className="animate-pulse">
-                          <div className="h-16 bg-muted rounded-lg"></div>
+                  <h3 className="text-lg font-medium text-foreground mb-2">No food entries</h3>
+                  <p className="text-muted-foreground max-w-sm mx-auto mb-6">
+                    {searchTerm || selectedMeal !== 'all' 
+                      ? 'No entries match your filters. Try adjusting your search.'
+                      : 'Start tracking your nutrition by adding your first food entry today.'
+                    }
+                  </p>
+                  <Button onClick={() => setShowAddDialog(true)} className="rounded-xl px-8">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Log Food
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {filteredEntries.map((entry) => (
+                    <motion.div
+                      key={entry.id}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      className="flex items-center justify-between p-4 rounded-2xl bg-card border border-border/50 hover:border-primary/30 shadow-sm transition-all duration-300 group"
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-xl bg-muted/50 flex items-center justify-center text-2xl">
+                          {entry.name.toLowerCase().includes('apple') ? '🍎' : 
+                           entry.name.toLowerCase().includes('sandwich') || entry.name.toLowerCase().includes('bread') ? '🥪' : 
+                           entry.name.toLowerCase().includes('chicken') || entry.name.toLowerCase().includes('meat') ? '🍗' : 
+                           entry.name.toLowerCase().includes('salad') || entry.name.toLowerCase().includes('green') ? '🥗' : 
+                           entry.name.toLowerCase().includes('water') || entry.name.toLowerCase().includes('drink') ? '💧' : '🍽️'}
                         </div>
-                      ))}
-                    </div>
-                  ) : filteredEntries.length === 0 ? (
-                    <div className="text-center py-12">
-                      <Apple className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                      <h3 className="text-lg font-medium text-foreground mb-2">No food entries</h3>
-                      <p className="text-muted-foreground mb-4">
-                        {searchTerm || selectedMeal !== 'all' 
-                          ? 'No entries match your filters. Try adjusting your search.'
-                          : 'Start tracking your nutrition by adding your first food entry.'
-                        }
-                      </p>
-                      <Button onClick={() => setShowAddDialog(true)}>
-                        <Plus className="h-4 w-4 mr-2" />
-                        Add First Entry
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      {filteredEntries.map((entry) => (
-                        <motion.div
-                          key={entry.id}
-                          initial={{ opacity: 0, x: -20 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          className="flex items-center justify-between p-4 rounded-lg border border-border/50 hover:border-primary/30 transition-all duration-300 group"
+                        <div>
+                          <div className="flex items-center gap-2 mb-1">
+                            <h3 className="font-semibold text-foreground text-base">{entry.name}</h3>
+                            {entry.servingSize && (
+                              <span className="text-xs text-muted-foreground">({entry.servingSize})</span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                            <span className="flex items-center text-foreground font-medium">
+                              {entry.calories} kcal
+                            </span>
+                            <span className="w-1 h-1 rounded-full bg-border"></span>
+                            <span className="capitalize">{entry.mealType}</span>
+                            <span className="w-1 h-1 rounded-full bg-border"></span>
+                            <span>{formatTime(entry.entryDate || entry.createdAt || '')}</span>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDeleteEntry(entry.id)}
+                          className="text-destructive hover:text-destructive hover:bg-destructive/10 rounded-xl"
                         >
-                          <div className="flex-1">
-                            <div className="flex items-center gap-3 mb-2">
-                              <h3 className="font-medium text-foreground">{entry.name}</h3>
-                              <Badge variant="outline" className="text-xs">
-                                {entry.mealType}
-                              </Badge>
-                              {entry.servingSize && (
-                                <span className="text-xs text-muted-foreground">
-                                  {entry.servingSize}
-                                </span>
-                              )}
-                            </div>
-                            <div className="flex gap-4 text-sm text-muted-foreground">
-                              <span className="flex items-center gap-1">
-                                <Zap className="h-3 w-3" />
-                                {entry.calories} cal
-                              </span>
-                              {entry.protein && (
-                                <span className="flex items-center gap-1">
-                                  <Target className="h-3 w-3" />
-                                  {entry.protein}g protein
-                                </span>
-                              )}
-                              {entry.carbs && (
-                                <span className="flex items-center gap-1">
-                                  <Apple className="h-3 w-3" />
-                                  {entry.carbs}g carbs
-                                </span>
-                              )}
-                              {entry.fat && (
-                                <span className="flex items-center gap-1">
-                                  <Droplet className="h-3 w-3" />
-                                  {entry.fat}g fat
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <div className="text-sm text-muted-foreground">
-                              {formatTime(entry.timestamp)}
-                            </div>
-                            <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleDeleteEntry(entry.id)}
-                                className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </div>
-                        </motion.div>
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              )}
             </motion.div>
           </div>
 
           {/* Sidebar */}
-          <div className="space-y-6">
+          <div className="space-y-6 min-w-0">
             {/* Weekly Progress */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -641,17 +644,19 @@ export default function Tracker() {
                   protein: dailySummary?.protein || 0,
                   carbs: dailySummary?.carbs || 0,
                   fat: dailySummary?.fat || 0,
-                  fiber: 0, // Add fiber tracking if available
-                  sugar: 0, // Add sugar tracking if available
+                  fiber: dailySummary?.fiber || 0,
+                  sugar: dailySummary?.sugar || 0,
                 }}
                 goals={{
                   calorieGoal: nutritionGoals?.calorieGoal || 2000,
                   proteinGoal: nutritionGoals?.proteinGoal || 150,
                   carbGoal: nutritionGoals?.carbGoal || 250,
-                  fatGoal: nutritionGoals?.fatGoal || 65,
+                  fatGoal: nutritionGoals?.fatGoal || 70,
+                  fiberGoal: nutritionGoals?.fiberGoal || 25,
+                  sugarGoal: nutritionGoals?.sugarGoal || 50,
                 }}
                 weeklyData={weeklyData}
-                isLoading={summaryLoading || goalsLoading}
+                isLoading={summaryLoading || goalsLoading || weeklyLoading}
               />
             </motion.div>
 

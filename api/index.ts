@@ -6,6 +6,7 @@ import { connectDB } from "../server/db";
 
 // Create a new Express app instance for the serverless function
 const app = express();
+app.disable('x-powered-by');
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 

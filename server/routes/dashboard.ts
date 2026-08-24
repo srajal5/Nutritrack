@@ -1,12 +1,21 @@
 import express from 'express';
 import storage from '../storage';
+import { ensureAuthenticated } from '../middleware';
+import { getNutritionRecommendations } from '../openai';
 
 const router = express.Router();
 
 // Get dashboard data for a user
-router.get('/:userId', async (req, res) => {
+router.get('/:userId', ensureAuthenticated, async (req, res) => {
   try {
     const { userId } = req.params;
+    const authenticatedUserId = req.user?.id;
+
+    // Security check: only allow users to see their own dashboard
+    if (authenticatedUserId && Number(userId) !== authenticatedUserId) {
+      return res.status(403).json({ error: 'Not authorized to view this dashboard' });
+    }
+
     const today = new Date();
 
     // Get today's food entries using MongoDB
@@ -46,7 +55,7 @@ router.get('/:userId', async (req, res) => {
       protein: userGoals.proteinGoal,
       carbs: userGoals.carbGoal,
       fat: userGoals.fatGoal,
-      fiber: 30, // Default since not in schema
+      fiber: userGoals.fiberGoal || 30,
       water: 2500, // Default since not in schema
     } : defaultGoals;
 
@@ -65,8 +74,37 @@ router.get('/:userId', async (req, res) => {
       10
     );
 
-    // Generate AI recommendations based on data
-    const recommendations = generateRecommendations(goals, progress);
+    // Generate personalized AI recommendations based on actual data
+    let recommendations;
+    try {
+      const aiRecommendations = await getNutritionRecommendations(
+        recentEntries.map(e => ({
+          name: e.name,
+          calories: e.calories || 0,
+          protein: e.protein || 0,
+          carbs: e.carbs || 0,
+          fat: e.fat || 0
+        })),
+        {
+          calorieGoal: goals.calories,
+          proteinGoal: goals.protein,
+          carbGoal: goals.carbs,
+          fatGoal: goals.fat
+        }
+      );
+      
+      // Transform AI recommendations to the format expected by the frontend
+      recommendations = aiRecommendations.map((rec, index) => ({
+        id: index + 1,
+        type: rec.category === 'hydration' ? 'hydration' : (rec.category === 'exercise' ? 'exercise' : 'nutrition'),
+        message: `${rec.title}: ${rec.description}`,
+        priority: rec.priority,
+        actionItems: rec.actionItems
+      }));
+    } catch (aiError) {
+      console.warn("AI recommendations failed, using rule-based fallback:", aiError);
+      recommendations = generateFallbackRecommendations(goals, progress);
+    }
 
     res.json({
       dailyTotals,
@@ -82,8 +120,8 @@ router.get('/:userId', async (req, res) => {
   }
 });
 
-// Generate AI recommendations
-function generateRecommendations(goals: any, progress: any) {
+// Generate fallback rule-based recommendations
+function generateFallbackRecommendations(goals: any, progress: any) {
   const recommendations = [];
 
   // Calorie recommendations

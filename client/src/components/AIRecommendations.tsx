@@ -15,7 +15,7 @@ const AIRecommendations = ({ userId = 1 }) => {
   
   if (isLoading) {
     return (
-      <div className="bg-white rounded-xl shadow-md p-6 animate-pulse">
+      <div className="bg-card text-card-foreground rounded-xl shadow-md p-6 animate-pulse">
         <div className="h-6 bg-slate-200 rounded mb-4"></div>
         <div className="space-y-4">
           {[...Array(3)].map((_, i) => (
@@ -28,11 +28,11 @@ const AIRecommendations = ({ userId = 1 }) => {
   
   if (isError || !recommendations) {
     return (
-      <div className="bg-white rounded-xl shadow-md p-6">
+      <div className="bg-card text-card-foreground rounded-xl shadow-md p-6">
         <h3 className="font-heading text-xl font-semibold mb-4">AI Recommendations</h3>
         <div className="p-4 border-l-4 border-orange-500 bg-orange-50 rounded-r-lg">
           <h4 className="font-medium mb-1">Unable to load recommendations</h4>
-          <p className="text-sm text-neutral-700">We couldn't load your personalized recommendations at this time. Please try again later.</p>
+          <p className="text-sm text-foreground">We couldn't load your personalized recommendations at this time. Please try again later.</p>
         </div>
       </div>
     );
@@ -43,7 +43,7 @@ const AIRecommendations = ({ userId = 1 }) => {
   const bgColors = ['primary/5', 'secondary/5', 'accent/5'];
   
   return (
-    <div className="bg-white rounded-xl shadow-md p-6">
+    <div className="bg-card text-card-foreground rounded-xl shadow-md p-6">
       <h3 className="font-heading text-xl font-semibold mb-4">AI Recommendations</h3>
       
       <div className="space-y-4">
@@ -57,14 +57,14 @@ const AIRecommendations = ({ userId = 1 }) => {
             }}
           >
             <h4 className="font-medium mb-1">{recommendation.title}</h4>
-            <p className="text-sm text-neutral-700">{recommendation.description}</p>
+            <p className="text-sm text-foreground">{recommendation.description}</p>
           </div>
         ))}
         
         {recommendations.length === 0 && (
           <div className="p-4 border-l-4 border-blue-500 bg-blue-50 rounded-r-lg">
             <h4 className="font-medium mb-1">Track More Foods</h4>
-            <p className="text-sm text-neutral-700">Add more food entries to get personalized AI recommendations for your nutrition.</p>
+            <p className="text-sm text-foreground">Add more food entries to get personalized AI recommendations for your nutrition.</p>
           </div>
         )}
       </div>

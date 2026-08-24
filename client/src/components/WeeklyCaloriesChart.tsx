@@ -1,4 +1,5 @@
 import { useDashboardData } from "../hooks/use-dashboard-data";
+import { useTheme } from "@/components/ThemeProvider";
 import { Line } from "react-chartjs-2";
 import {
   Chart as ChartJS,
@@ -23,12 +24,17 @@ ChartJS.register(
 
 export default function WeeklyCaloriesChart() {
   const { weeklyProgress, nutritionGoals, isLoading } = useDashboardData();
+  const { resolvedTheme } = useTheme();
+
+  const textColor = resolvedTheme === 'dark' ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.7)';
+  const gridColor = resolvedTheme === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
+  const goalColor = resolvedTheme === 'dark' ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.2)';
 
   if (isLoading || !weeklyProgress || !nutritionGoals) {
     return (
       <div className="space-y-4">
-        <div className="h-4 w-1/3 bg-white/10 rounded animate-pulse" />
-        <div className="h-48 w-full bg-white/10 rounded animate-pulse" />
+        <div className="h-4 w-1/3 bg-card rounded animate-pulse" />
+        <div className="h-48 w-full bg-card rounded animate-pulse" />
       </div>
     );
   }
@@ -46,7 +52,7 @@ export default function WeeklyCaloriesChart() {
       {
         label: 'Goal',
         data: Array(7).fill(nutritionGoals.dailyCalories),
-        borderColor: 'rgba(255, 255, 255, 0.2)',
+        borderColor: goalColor,
         borderDash: [5, 5],
         fill: false
       }
@@ -60,7 +66,7 @@ export default function WeeklyCaloriesChart() {
       legend: {
         position: 'top' as const,
         labels: {
-          color: 'rgba(255, 255, 255, 0.7)'
+          color: textColor
         }
       }
     },
@@ -68,18 +74,18 @@ export default function WeeklyCaloriesChart() {
       y: {
         beginAtZero: true,
         grid: {
-          color: 'rgba(255, 255, 255, 0.1)'
+          color: gridColor
         },
         ticks: {
-          color: 'rgba(255, 255, 255, 0.7)'
+          color: textColor
         }
       },
       x: {
         grid: {
-          color: 'rgba(255, 255, 255, 0.1)'
+          color: gridColor
         },
         ticks: {
-          color: 'rgba(255, 255, 255, 0.7)'
+          color: textColor
         }
       }
     }

@@ -97,12 +97,12 @@ const AIChatInterface = () => {
     <div className="max-w-4xl mx-auto bg-neutral-50 rounded-xl shadow-md overflow-hidden">
       <div className="grid grid-cols-1 md:grid-cols-3 h-[600px]">
         {/* Chat Sidebar */}
-        <div className="hidden md:block bg-neutral-100 p-4 border-r border-neutral-200">
+        <div className="hidden md:block bg-secondary p-4 border-r border-border">
           <div className="mb-4">
             <h3 className="font-heading text-lg font-semibold mb-2">Chat Options</h3>
             <Button
               variant="outline"
-              className="w-full text-left p-3 mb-2 bg-white rounded-lg hover:bg-neutral-50 transition text-sm font-medium justify-start"
+              className="w-full text-left p-3 mb-2 bg-card text-card-foreground rounded-lg hover:bg-neutral-50 transition text-sm font-medium justify-start"
               onClick={startNewConversation}
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -120,25 +120,25 @@ const AIChatInterface = () => {
             {messages.map((message) => (
               <div
                 key={message.id}
-                className={`flex ${
+                className={`flex w-full ${
                   message.sender === 'user' ? 'justify-end mb-4' : 'mb-4'
                 }`}
               >
                 {message.sender === 'ai' && (
                   <div className="flex-shrink-0 mr-3">
-                    <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-white font-bold">
+                    <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold">
                       AI
                     </div>
                   </div>
                 )}
                 <div
-                  className={`${
+                  className={`break-words whitespace-pre-wrap overflow-hidden ${
                     message.sender === 'user'
-                      ? 'chat-bubble-user bg-primary p-4 rounded-2xl text-white max-w-[80%]'
-                      : 'chat-bubble-ai bg-neutral-100 p-4 rounded-2xl max-w-[80%]'
+                      ? 'chat-bubble-user bg-primary p-4 rounded-2xl text-primary-foreground max-w-[80%]'
+                      : 'chat-bubble-ai bg-secondary p-4 rounded-2xl max-w-[80%]'
                   }`}
                 >
-                  <p className={message.sender === 'user' ? 'text-white' : 'text-neutral-800'}>
+                  <p className={`break-words whitespace-pre-wrap ${message.sender === 'user' ? 'text-primary-foreground' : 'text-foreground'}`}>
                     {message.content}
                   </p>
                 </div>
@@ -148,19 +148,19 @@ const AIChatInterface = () => {
           </div>
           
           {/* Chat Input */}
-          <div className="border-t border-neutral-200 p-4">
+          <div className="border-t border-border p-4">
             <form onSubmit={handleSubmit} className="flex space-x-2">
               <Input
                 type="text"
                 placeholder="Ask me anything about nutrition and fitness..."
-                className="flex-1 px-4 py-2 border border-neutral-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
+                className="flex-1 px-4 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
                 value={chatInput}
                 onChange={(e) => setChatInput(e.target.value)}
                 disabled={sendMessageMutation.isPending}
               />
               <Button
                 type="submit"
-                className="bg-primary hover:bg-primary-dark text-white p-2 rounded-lg transition-colors"
+                className="bg-primary hover:bg-primary-dark text-primary-foreground p-2 rounded-lg transition-colors"
                 disabled={sendMessageMutation.isPending}
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -168,7 +168,7 @@ const AIChatInterface = () => {
                 </svg>
               </Button>
             </form>
-            <p className="text-xs text-neutral-500 mt-2">
+            <p className="text-xs text-foreground mt-2">
               AI responses are generated based on best practices in nutrition and fitness but should not replace professional medical advice.
             </p>
           </div>

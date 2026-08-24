@@ -15,7 +15,7 @@ const FeatureCard = ({ icon, title, description, bgColorClass, iconColorClass }:
         </div>
       </div>
       <h3 className="font-heading text-xl font-semibold mb-2">{title}</h3>
-      <p className="text-neutral-700">{description}</p>
+      <p className="text-foreground">{description}</p>
     </div>
   );
 };

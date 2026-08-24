@@ -7,12 +7,6 @@ import type { UserDocument } from "./storage";
 import bcrypt from "bcrypt";
 import MongoStore from "connect-mongo";
 import cors from "cors";
-import path from "path";
-import express from "express";
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 declare global {
   namespace Express {
@@ -37,17 +31,6 @@ export function setupAuth(app: Express) {
   
   app.use(cors(corsOptions));
   app.options('*', cors(corsOptions)); // Enable pre-flight for all routes
-
-  // Serve static files with proper MIME types
-  app.use(express.static(path.join(__dirname, '../dist/public'), {
-    setHeaders: (res, path) => {
-      if (path.endsWith('.js')) {
-        res.setHeader('Content-Type', 'application/javascript');
-      } else if (path.endsWith('.css')) {
-        res.setHeader('Content-Type', 'text/css');
-      }
-    }
-  }));
 
   // Configure session store with updated settings
   app.use(session({
@@ -75,15 +58,7 @@ export function setupAuth(app: Express) {
   app.use(passport.initialize());
   app.use(passport.session());
 
-  // Add session logging middleware
-  app.use((_req, res, next) => {
-    console.log('Session state:', {
-      sessionID: res.req?.sessionID,
-      isAuthenticated: res.req?.isAuthenticated(),
-      user: res.req?.user ? { id: res.req.user.id, username: res.req.user.username } : null
-    });
-    next();
-  });
+
 
   // Updated LocalStrategy with better error handling
   passport.use(
@@ -95,23 +70,18 @@ export function setupAuth(app: Express) {
       },
       async (username, password, done) => {
         try {
-          console.log('Attempting login for username:', username);
-          
           const user = await storage.getUserByUsername(username);
           if (!user) {
-            console.log('User not found:', username);
             return done(null, false, { message: 'Invalid username or password.' });
           }
 
-          console.log('User found, comparing passwords');
           const isValid = await bcrypt.compare(password, user.password);
           
           if (!isValid) {
-            console.log('Invalid password for user:', username);
             return done(null, false, { message: 'Invalid username or password.' });
           }
 
-          console.log('Login successful for user:', username);
+          console.log('Login successful for:', username);
           return done(null, user);
         } catch (err) {
           console.error('Error in LocalStrategy:', err);
@@ -122,19 +92,15 @@ export function setupAuth(app: Express) {
   );
 
   passport.serializeUser((user: Express.User, done) => {
-    console.log('Serializing user:', user.id);
     done(null, user.id);
   });
 
   passport.deserializeUser(async (id: number, done) => {
     try {
-      console.log('Deserializing user:', id);
       const user = await storage.getUser(id);
       if (!user) {
-        console.log('User not found during deserialization:', id);
         return done(null, false);
       }
-      console.log('User deserialized successfully:', id);
       done(null, user);
     } catch (err) {
       console.error('Error in deserializeUser:', err);
@@ -173,7 +139,8 @@ export function setupAuth(app: Express) {
         if (err) return _next(err);
         req.session.save((err: unknown) => {
           if (err) return _next(err);
-          const { password, ...userWithoutPassword } = user;
+          const plainUser = typeof user.toObject === 'function' ? user.toObject() : { ...user };
+          const { password, _id, __v, ...userWithoutPassword } = plainUser;
           res.status(201).json({ 
             user: userWithoutPassword, 
             message: "Registration successful",
@@ -279,7 +246,8 @@ export function setupAuth(app: Express) {
           });
 
           // Return user data
-          const { password: _, ...userWithoutPassword } = user;
+          const plainUser = typeof user.toObject === 'function' ? user.toObject() : { ...user };
+          const { password: _, _id, __v, ...userWithoutPassword } = plainUser;
           return res.json({
             user: userWithoutPassword,
             sessionID: req.sessionID
@@ -332,14 +300,13 @@ export function setupAuth(app: Express) {
     if (!req.isAuthenticated()) {
       return res.status(401).json({ message: "Not authenticated" });
     }
-    const { password, ...userWithoutPassword } = req.user as UserDocument;
-    res.json({ user: userWithoutPassword });
+    const userDoc = req.user as any;
+    // Convert Mongoose document to plain object and strip password
+    const plainUser = userDoc.toObject ? userDoc.toObject() : { ...userDoc };
+    const { password, _id, __v, ...userWithoutPassword } = plainUser;
+    res.json(userWithoutPassword);
   };
   app.get("/api/user", userHandler);
   app.get("/user", userHandler);
-
-  // SPA fallback - must be last
-  app.get('*', (_req, res) => {
-    res.sendFile(path.join(__dirname, '../dist/public/index.html'));
-  });
+  // NOTE: SPA fallback is handled by setupVite (dev) and express.static (prod) in index.ts
 }

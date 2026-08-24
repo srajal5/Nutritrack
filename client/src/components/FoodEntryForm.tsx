@@ -54,7 +54,7 @@ interface AnalysisResult {
   fat: number;
   fiber: number;
   sugar: number;
-  aiAnalysis: string;
+  analysis: string;
   confidence: number;
   suggestions: string[];
 }
@@ -75,7 +75,11 @@ const foodDatabase = [
   { name: "Avocado (100g)", calories: 160, protein: 2, carbs: 9, fat: 15, fiber: 7, sugar: 0.7, category: "fruit" },
 ];
 
-const FoodEntryForm = () => {
+interface FoodEntryFormProps {
+  onSuccess?: () => void;
+}
+
+const FoodEntryForm = ({ onSuccess: onSuccessCallback }: FoodEntryFormProps) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { user } = useAuth();
@@ -83,6 +87,7 @@ const FoodEntryForm = () => {
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
   const [showFoodDatabase, setShowFoodDatabase] = useState(false);
   const [activeTab, setActiveTab] = useState('manual');
+  const [capturedImage, setCapturedImage] = useState<string | null>(null);
 
   const form = useForm<FoodEntryFormValues>({
     resolver: zodResolver(foodEntrySchema),
@@ -100,26 +105,36 @@ const FoodEntryForm = () => {
     },
   });
 
-  // Mock AI analysis function
-  const analyzeFood = async (foodName: string): Promise<AnalysisResult> => {
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    return {
-      calories: Math.floor(Math.random() * 500) + 100,
-      protein: Math.floor(Math.random() * 30) + 5,
-      carbs: Math.floor(Math.random() * 50) + 10,
-      fat: Math.floor(Math.random() * 20) + 2,
-      fiber: Math.floor(Math.random() * 10) + 1,
-      sugar: Math.floor(Math.random() * 20) + 2,
-      aiAnalysis: `AI analysis of ${foodName}: This appears to be a nutritious food item with balanced macronutrients.`,
-      confidence: Math.floor(Math.random() * 30) + 70,
-      suggestions: [
-        "Consider pairing with vegetables for added fiber",
-        "This food provides good protein content",
-        "Consider adding more vegetables for fiber",
-      ]
-    };
+  // Real AI analysis function
+  const analyzeFood = async (foodName: string, description: string, servingSize: string, imageUrl?: string): Promise<AnalysisResult> => {
+    const response = await apiRequest(
+      'POST',
+      '/api/food-entries/analyze',
+      {
+        name: foodName || "Food Item", // Fallback if name is empty
+        description,
+        servingSize,
+        imageUrl
+      }
+    );
+    return await response.json();
+  };
+
+  const handleCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64String = reader.result as string;
+        setCapturedImage(base64String);
+        
+        // If we have an image but no name, prompt the user or just analyze
+        if (!form.getValues('name')) {
+          form.setValue('name', 'Photo Analysis');
+        }
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const handleFoodSelect = (food: typeof foodDatabase[0]) => {
@@ -130,6 +145,9 @@ const FoodEntryForm = () => {
     form.setValue('fat', food.fat);
     form.setValue('fiber', food.fiber);
     form.setValue('sugar', food.sugar);
+    if (!form.getValues('servingSize')) {
+      form.setValue('servingSize', '1 serving');
+    }
     setShowFoodDatabase(false);
   };
 
@@ -157,7 +175,15 @@ const FoodEntryForm = () => {
       });
       form.reset();
       setAnalysisResult(null);
+      // Invalidate ALL related queries so everything updates
       queryClient.invalidateQueries({ queryKey: ['/api/food-entries'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/food-entries/daily'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/food-entries/weekly'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/food-entries/recent'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/stats'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/dashboard'] });
+      // Notify parent to close dialog
+      onSuccessCallback?.();
     },
     onError: () => {
       toast({
@@ -178,15 +204,18 @@ const FoodEntryForm = () => {
       return;
     }
 
-    mutation.mutate(data);
+    mutation.mutate({
+      ...data,
+      imageUrl: capturedImage || undefined
+    });
   };
 
   const handleAnalyze = async () => {
     const foodName = form.getValues('name');
-    if (!foodName) {
+    if (!foodName && !capturedImage) {
       toast({
         title: "Error",
-        description: "Please enter a food name to analyze.",
+        description: "Please enter a food name or take a photo to analyze.",
         variant: "destructive",
       });
       return;
@@ -194,10 +223,17 @@ const FoodEntryForm = () => {
 
     setIsAnalyzing(true);
     try {
-      const result = await analyzeFood(foodName);
+      const description = form.getValues('description') || "";
+      const servingSize = form.getValues('servingSize') || "1 serving";
+      const result = await analyzeFood(foodName, description, servingSize, capturedImage || undefined);
       setAnalysisResult(result);
       
       // Auto-fill form with analysis results
+      // If the AI identified the food, update the name
+      if (result.analysis && !foodName.includes('Photo Analysis')) {
+        // Optional: Extract a cleaner name from analysis if possible
+      }
+      
       form.setValue('calories', result.calories);
       form.setValue('protein', result.protein);
       form.setValue('carbs', result.carbs);
@@ -207,7 +243,7 @@ const FoodEntryForm = () => {
       
       toast({
         title: "Analysis Complete!",
-        description: `AI analyzed ${foodName} with ${result.confidence}% confidence.`,
+        description: `AI analyzed your food with ${result.confidence}% confidence.`,
       });
     } catch (error) {
       toast({
@@ -223,33 +259,33 @@ const FoodEntryForm = () => {
   return (
     <div className="space-y-6">
       {/* Input Method Tabs */}
-      <div className="tabs tabs-boxed bg-base-200/50 p-1 mb-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-1 bg-secondary/50 p-1 mb-4 rounded-box">
         <button 
-          className={`tab flex-1 ${activeTab === "manual" ? "tab-active" : ""}`}
+          className={`btn btn-sm flex flex-row items-center justify-center gap-1 border-0 ${activeTab === "manual" ? "bg-background shadow-sm" : "btn-ghost"}`}
           onClick={() => setActiveTab("manual")}
         >
-          <Edit className="h-4 w-4 mr-2" />
+          <Edit className="h-4 w-4" />
           Manual
         </button>
         <button 
-          className={`tab flex-1 ${activeTab === "photo" ? "tab-active" : ""}`}
+          className={`btn btn-sm flex flex-row items-center justify-center gap-1 border-0 ${activeTab === "photo" ? "bg-background shadow-sm" : "btn-ghost"}`}
           onClick={() => setActiveTab("photo")}
         >
-          <Camera className="h-4 w-4 mr-2" />
+          <Camera className="h-4 w-4" />
           Photo
         </button>
         <button 
-          className={`tab flex-1 ${activeTab === "barcode" ? "tab-active" : ""}`}
+          className={`btn btn-sm flex flex-row items-center justify-center gap-1 border-0 ${activeTab === "barcode" ? "bg-background shadow-sm" : "btn-ghost"}`}
           onClick={() => setActiveTab("barcode")}
         >
-          <Barcode className="h-4 w-4 mr-2" />
+          <Barcode className="h-4 w-4" />
           Barcode
         </button>
         <button 
-          className={`tab flex-1 ${activeTab === "search" ? "tab-active" : ""}`}
+          className={`btn btn-sm flex flex-row items-center justify-center gap-1 border-0 ${activeTab === "search" ? "bg-background shadow-sm" : "btn-ghost"}`}
           onClick={() => setActiveTab("search")}
         >
-          <Search className="h-4 w-4 mr-2" />
+          <Search className="h-4 w-4" />
           Search
         </button>
       </div>
@@ -259,7 +295,7 @@ const FoodEntryForm = () => {
         <div className="space-y-4">
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="form-control">
+              <div className="flex flex-col gap-1.5 w-full">
                 <label className="label">
                   <span className="label-text">Food Name</span>
                 </label>
@@ -276,7 +312,7 @@ const FoodEntryForm = () => {
                 )}
               </div>
 
-              <div className="form-control">
+              <div className="flex flex-col gap-1.5 w-full">
                 <label className="label">
                   <span className="label-text">Meal Type</span>
                 </label>
@@ -298,7 +334,7 @@ const FoodEntryForm = () => {
               </div>
             </div>
 
-            <div className="form-control">
+            <div className="flex flex-col gap-1.5 w-full">
               <label className="label">
                 <span className="label-text">Description (Optional)</span>
               </label>
@@ -309,7 +345,7 @@ const FoodEntryForm = () => {
               />
             </div>
 
-            <div className="form-control">
+            <div className="flex flex-col gap-1.5 w-full">
               <label className="label">
                 <span className="label-text">Serving Size</span>
               </label>
@@ -333,7 +369,7 @@ const FoodEntryForm = () => {
                 Nutrition Information
               </h3>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                <div className="form-control">
+                <div className="flex flex-col gap-1.5 w-full">
                   <label className="label">
                     <span className="label-text flex items-center gap-1">
                       <Flame className="h-3 w-3" />
@@ -347,7 +383,7 @@ const FoodEntryForm = () => {
                   />
                 </div>
 
-                <div className="form-control">
+                <div className="flex flex-col gap-1.5 w-full">
                   <label className="label">
                     <span className="label-text flex items-center gap-1">
                       <Target className="h-3 w-3" />
@@ -361,7 +397,7 @@ const FoodEntryForm = () => {
                   />
                 </div>
 
-                <div className="form-control">
+                <div className="flex flex-col gap-1.5 w-full">
                   <label className="label">
                     <span className="label-text flex items-center gap-1">
                       <Zap className="h-3 w-3" />
@@ -375,7 +411,7 @@ const FoodEntryForm = () => {
                   />
                 </div>
 
-                <div className="form-control">
+                <div className="flex flex-col gap-1.5 w-full">
                   <label className="label">
                     <span className="label-text flex items-center gap-1">
                       <Droplet className="h-3 w-3" />
@@ -389,7 +425,7 @@ const FoodEntryForm = () => {
                   />
                 </div>
 
-                <div className="form-control">
+                <div className="flex flex-col gap-1.5 w-full">
                   <label className="label">
                     <span className="label-text">Fiber (g)</span>
                   </label>
@@ -400,7 +436,7 @@ const FoodEntryForm = () => {
                   />
                 </div>
 
-                <div className="form-control">
+                <div className="flex flex-col gap-1.5 w-full">
                   <label className="label">
                     <span className="label-text">Sugar (g)</span>
                   </label>
@@ -419,7 +455,7 @@ const FoodEntryForm = () => {
                 type="button"
                 onClick={handleAnalyze}
                 disabled={isAnalyzing}
-                className="btn btn-outline btn-primary"
+                className="btn btn-outline btn-primary flex flex-row items-center flex-nowrap whitespace-nowrap"
               >
                 {isAnalyzing ? (
                   <>
@@ -439,7 +475,7 @@ const FoodEntryForm = () => {
             <button
               type="submit"
               disabled={mutation.isPending}
-              className="btn btn-primary w-full"
+              className="btn btn-primary w-full flex flex-row items-center justify-center flex-nowrap whitespace-nowrap"
             >
               {mutation.isPending ? (
                 <>
@@ -461,19 +497,77 @@ const FoodEntryForm = () => {
       {activeTab === "photo" && (
         <div className="space-y-4">
           <div className="text-center space-y-4">
-            <div className="p-6 border-2 border-dashed border-base-300 rounded-lg">
-              <Camera className="h-12 w-12 mx-auto text-base-content/50 mb-4" />
+            <div className={`p-6 border-2 border-dashed rounded-lg transition-colors ${capturedImage ? 'border-primary/50 bg-primary/5' : 'border-border'}`}>
+              {capturedImage ? (
+                <div className="relative inline-block">
+                  <img 
+                    src={capturedImage} 
+                    alt="Captured food" 
+                    className="max-h-64 rounded-lg shadow-lg mb-4 object-cover"
+                  />
+                  <button 
+                    onClick={() => setCapturedImage(null)}
+                    className="absolute -top-2 -right-2 btn btn-circle btn-xs btn-error"
+                  >
+                    ×
+                  </button>
+                </div>
+              ) : (
+                <Camera className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+              )}
+              
               <h3 className="text-lg font-semibold mb-2">
-                Photo Analysis
+                {capturedImage ? "Photo Captured!" : "Photo Analysis"}
               </h3>
-              <p className="text-base-content/70 mb-4">
-                Take a photo of your food to get AI-powered nutritional analysis
+              <p className="text-muted-foreground mb-4">
+                {capturedImage 
+                  ? "Ready to analyze this photo? Click 'Analyze Captured Photo' below." 
+                  : "Take a photo of your food to get AI-powered nutritional analysis"}
               </p>
-              <button className="btn btn-primary">
-                <Camera className="h-4 w-4 mr-2" />
-                Take Photo
-              </button>
+              
+              <div className="flex flex-col gap-2 max-w-xs mx-auto">
+                <label className="btn btn-primary">
+                  <Camera className="h-4 w-4 mr-2" />
+                  {capturedImage ? "Change Photo" : "Take/Upload Photo"}
+                  <input 
+                    type="file" 
+                    accept="image/*" 
+                    capture="environment" 
+                    className="hidden" 
+                    onChange={handleCapture}
+                  />
+                </label>
+                
+                {capturedImage && (
+                  <button 
+                    onClick={handleAnalyze}
+                    disabled={isAnalyzing}
+                    className="btn btn-secondary"
+                  >
+                    {isAnalyzing ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Analyzing...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="h-4 w-4 mr-2" />
+                        Analyze Captured Photo
+                      </>
+                    )}
+                  </button>
+                )}
+              </div>
             </div>
+            
+            {capturedImage && (
+              <div className="alert alert-info shadow-sm py-2">
+                <div>
+                  <Sparkles className="h-4 w-4" />
+                  <span>AI will identify the food and estimate macros from the photo.</span>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -482,12 +576,12 @@ const FoodEntryForm = () => {
       {activeTab === "barcode" && (
         <div className="space-y-4">
           <div className="text-center space-y-4">
-            <div className="p-6 border-2 border-dashed border-base-300 rounded-lg">
-              <Barcode className="h-12 w-12 mx-auto text-base-content/50 mb-4" />
+            <div className="p-6 border-2 border-dashed border-border rounded-lg">
+              <Barcode className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
               <h3 className="text-lg font-semibold mb-2">
                 Scan Barcode
               </h3>
-              <p className="text-base-content/70 mb-4">
+              <p className="text-muted-foreground mb-4">
                 Point your camera at a food product barcode to automatically detect nutritional information
               </p>
               <button 
@@ -521,7 +615,7 @@ const FoodEntryForm = () => {
               </button>
             </div>
             
-            <div className="text-sm text-base-content/70">
+            <div className="text-sm text-muted-foreground">
               <p>• Ensure good lighting for accurate scanning</p>
               <p>• Hold the barcode steady in the camera view</p>
               <p>• Supported formats: UPC, EAN, Code 128</p>
@@ -534,7 +628,7 @@ const FoodEntryForm = () => {
       {activeTab === "search" && (
         <div className="space-y-4">
           <div className="space-y-4">
-            <div className="form-control">
+            <div className="flex flex-col gap-1.5 w-full">
               <label className="label">
                 <span className="label-text">Search Food Database</span>
               </label>
@@ -551,7 +645,7 @@ const FoodEntryForm = () => {
             </div>
 
             {showFoodDatabase && (
-              <div className="card bg-base-100 shadow-xl">
+              <div className="card bg-background shadow-xl">
                 <div className="card-body">
                   <h3 className="card-title">Food Database</h3>
                   <div className="space-y-2 max-h-60 overflow-y-auto">
@@ -563,7 +657,7 @@ const FoodEntryForm = () => {
                       >
                         <div>
                           <div className="font-medium">{food.name}</div>
-                          <div className="text-sm text-base-content/70">
+                          <div className="text-sm text-muted-foreground">
                             {food.calories} cal • {food.protein}g protein • {food.carbs}g carbs • {food.fat}g fat
                           </div>
                         </div>
@@ -579,36 +673,36 @@ const FoodEntryForm = () => {
 
       {/* Analysis Results */}
       {analysisResult && (
-        <div className="card bg-base-100 shadow-xl">
+        <div className="card bg-background shadow-xl">
           <div className="card-body">
             <h3 className="card-title flex items-center gap-2">
               <Sparkles className="h-5 w-5 text-primary" />
               AI Analysis Results
             </h3>
             <div className="space-y-4">
-              <p className="text-base-content/70">{analysisResult.aiAnalysis}</p>
+              <p className="text-muted-foreground">{analysisResult.analysis}</p>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="text-center p-3 bg-base-200 rounded-lg">
+                <div className="text-center p-3 bg-secondary rounded-lg">
                   <div className="text-2xl font-bold text-primary">{analysisResult.calories}</div>
-                  <div className="text-sm text-base-content/70">Calories</div>
+                  <div className="text-sm text-muted-foreground">Calories</div>
                 </div>
-                <div className="text-center p-3 bg-base-200 rounded-lg">
+                <div className="text-center p-3 bg-secondary rounded-lg">
                   <div className="text-2xl font-bold text-primary">{analysisResult.protein}g</div>
-                  <div className="text-sm text-base-content/70">Protein</div>
+                  <div className="text-sm text-muted-foreground">Protein</div>
                 </div>
-                <div className="text-center p-3 bg-base-200 rounded-lg">
+                <div className="text-center p-3 bg-secondary rounded-lg">
                   <div className="text-2xl font-bold text-primary">{analysisResult.carbs}g</div>
-                  <div className="text-sm text-base-content/70">Carbs</div>
+                  <div className="text-sm text-muted-foreground">Carbs</div>
                 </div>
-                <div className="text-center p-3 bg-base-200 rounded-lg">
+                <div className="text-center p-3 bg-secondary rounded-lg">
                   <div className="text-2xl font-bold text-primary">{analysisResult.fat}g</div>
-                  <div className="text-sm text-base-content/70">Fat</div>
+                  <div className="text-sm text-muted-foreground">Fat</div>
                 </div>
               </div>
               <div className="space-y-2">
                 <h4 className="font-semibold">Suggestions:</h4>
-                <ul className="list-disc list-inside space-y-1 text-sm text-base-content/70">
-                  {analysisResult.suggestions.map((suggestion, index) => (
+                <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
+                  {analysisResult.suggestions?.map((suggestion, index) => (
                     <li key={index}>{suggestion}</li>
                   ))}
                 </ul>

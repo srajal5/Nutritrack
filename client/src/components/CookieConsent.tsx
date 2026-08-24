@@ -28,7 +28,7 @@ export default function CookieConsent() {
 
   return (
     <div className="fixed bottom-0 left-0 right-0 z-50 p-4">
-      <Card className="mx-auto max-w-2xl bg-white shadow-lg">
+      <Card className="mx-auto max-w-2xl bg-card text-card-foreground shadow-lg">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-lg font-medium">Cookie Consent</CardTitle>
           <Button
@@ -41,7 +41,7 @@ export default function CookieConsent() {
           </Button>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-foreground">
             We use cookies to enhance your browsing experience, serve personalized content, and analyze our traffic. By clicking "Accept All", you consent to our use of cookies.
           </p>
         </CardContent>

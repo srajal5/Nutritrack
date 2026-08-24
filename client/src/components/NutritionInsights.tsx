@@ -31,6 +31,8 @@ interface NutritionGoals {
   proteinGoal: number;
   carbGoal: number;
   fatGoal: number;
+  fiberGoal: number;
+  sugarGoal: number;
 }
 
 interface Insight {
@@ -139,23 +141,31 @@ const NutritionInsights = ({ dailyData, goals, weeklyData, isLoading = false }: 
     }
 
     // Fiber analysis
-    if (dailyData.fiber < 25) {
+    if (dailyData.fiber < goals.fiberGoal) {
       newInsights.push({
         type: 'suggestion',
         title: 'Low Fiber Intake',
-        description: 'Add more fruits, vegetables, and whole grains to reach the recommended 25g of fiber daily.',
+        description: `You've consumed ${Math.round((dailyData.fiber / goals.fiberGoal) * 100)}% of your fiber goal. Add more fruits, vegetables, and whole grains to reach ${goals.fiberGoal}g daily.`,
         icon: <Apple className="h-4 w-4" />,
         action: 'Add fiber-rich foods',
         priority: 3
       });
+    } else if (dailyData.fiber >= goals.fiberGoal) {
+      newInsights.push({
+        type: 'positive',
+        title: 'Excellent Fiber Intake',
+        description: 'You\'ve met your fiber goals for the day! This is great for your digestive health.',
+        icon: <CheckCircle className="h-4 w-4" />,
+        priority: 4
+      });
     }
 
     // Sugar analysis
-    if (dailyData.sugar > 50) {
+    if (dailyData.sugar > goals.sugarGoal) {
       newInsights.push({
         type: 'warning',
         title: 'High Sugar Intake',
-        description: 'Your sugar intake is above recommended levels. Consider reducing added sugars.',
+        description: `You're ${Math.round(((dailyData.sugar - goals.sugarGoal) / goals.sugarGoal) * 100)}% over your recommended sugar limit. Try to limit added sugars.`,
         icon: <AlertTriangle className="h-4 w-4" />,
         action: 'Reduce sugar intake',
         priority: 2
@@ -214,7 +224,7 @@ const NutritionInsights = ({ dailyData, goals, weeklyData, isLoading = false }: 
       case 'suggestion':
         return 'bg-purple-50 dark:bg-purple-950/20 border-purple-200 dark:border-purple-800 text-purple-800 dark:text-purple-200';
       default:
-        return 'bg-gray-50 dark:bg-gray-950/20 border-gray-200 dark:border-gray-800 text-gray-800 dark:text-gray-200';
+        return 'bg-gray-50 dark:bg-gray-950/20 border-border dark:border-border text-foreground dark:text-foreground';
     }
   };
 
@@ -229,7 +239,7 @@ const NutritionInsights = ({ dailyData, goals, weeklyData, isLoading = false }: 
       case 'suggestion':
         return 'text-purple-600 dark:text-purple-400';
       default:
-        return 'text-gray-600 dark:text-gray-400';
+        return 'text-foreground dark:text-foreground';
     }
   };
 
@@ -333,13 +343,25 @@ const NutritionInsights = ({ dailyData, goals, weeklyData, isLoading = false }: 
               <div className="text-lg font-semibold text-foreground">
                 {Math.round((dailyData.calories / goals.calorieGoal) * 100)}%
               </div>
-              <div className="text-xs text-muted-foreground">Calorie Goal</div>
+              <div className="text-xs text-muted-foreground">Calories</div>
             </div>
             <div className="text-center p-2 rounded bg-muted/50">
               <div className="text-lg font-semibold text-foreground">
                 {Math.round((dailyData.protein / goals.proteinGoal) * 100)}%
               </div>
-              <div className="text-xs text-muted-foreground">Protein Goal</div>
+              <div className="text-xs text-muted-foreground">Protein</div>
+            </div>
+            <div className="text-center p-2 rounded bg-muted/50">
+              <div className="text-lg font-semibold text-foreground">
+                {Math.round((dailyData.fiber / goals.fiberGoal) * 100)}%
+              </div>
+              <div className="text-xs text-muted-foreground">Fiber</div>
+            </div>
+            <div className="text-center p-2 rounded bg-muted/50">
+              <div className="text-lg font-semibold text-foreground">
+                {Math.round((dailyData.sugar / goals.sugarGoal) * 100)}%
+              </div>
+              <div className="text-xs text-muted-foreground">Sugar</div>
             </div>
           </div>
         </div>

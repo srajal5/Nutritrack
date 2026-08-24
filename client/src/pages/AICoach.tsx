@@ -24,7 +24,6 @@ import {
   ArrowRight
 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
-import BackButton from '@/components/BackButton';
 
 interface Message {
   id: string;
@@ -610,7 +609,6 @@ What would you like to focus on first?`;
           transition={{ duration: 0.5 }}
         >
           <div className="flex items-center gap-4 mb-4">
-            <BackButton />
             <div className="p-3 rounded-full bg-primary/10">
               <Brain className="h-8 w-8 text-primary" />
             </div>
@@ -748,21 +746,39 @@ What would you like to focus on first?`;
                   </ScrollArea>
                 </CardContent>
 
-                <div className="p-4 border-t border-border/50">
-                  <div className="flex gap-2">
+                <div className="p-4 border-t border-border/50 bg-background/50 backdrop-blur-sm rounded-b-2xl">
+                  {/* Quick Action Buttons */}
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    <Button 
+                      variant="outline" 
+                      className="rounded-full text-xs py-1 h-8 bg-card"
+                      onClick={() => handleQuickQuestion("Can you generate a meal plan for me?")}
+                    >
+                      Generate Meal Plan
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      className="rounded-full text-xs py-1 h-8 bg-card"
+                      onClick={() => handleQuickQuestion("I need some nutrition advice.")}
+                    >
+                      Nutrition Advice
+                    </Button>
+                  </div>
+
+                  <div className="flex gap-2 items-center">
                     <Input
                       value={inputValue}
                       onChange={(e) => setInputValue(e.target.value)}
                       onKeyPress={(e) => e.key === 'Enter' && sendMessage(inputValue)}
-                      placeholder="Ask me anything about nutrition, fitness, or health..."
-                      className="flex-1"
+                      placeholder="Type your message..."
+                      className="flex-1 rounded-full py-6 text-base shadow-sm border-border"
                     />
                     <Button 
                       onClick={() => sendMessage(inputValue)}
                       disabled={!inputValue.trim() || isTyping}
-                      className="bg-primary hover:bg-primary/90"
+                      className="bg-primary hover:bg-primary/90 rounded-full h-12 w-12 p-0 flex items-center justify-center shrink-0 shadow-sm transition-transform active:scale-95"
                     >
-                      <Send className="h-4 w-4" />
+                      <Send className="h-5 w-5" />
                     </Button>
                   </div>
                 </div>

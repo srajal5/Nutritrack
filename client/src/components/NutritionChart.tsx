@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Chart, DoughnutController, ArcElement, Legend, Tooltip } from 'chart.js';
 import { FoodEntryDocument } from '../types';
 import { useAuth } from '@/hooks/use-auth';
+import { useTheme } from '@/components/ThemeProvider';
 
 Chart.register(DoughnutController, ArcElement, Legend, Tooltip);
 
@@ -17,6 +18,9 @@ const NutritionChart = () => {
   const chartRef = useRef<HTMLCanvasElement>(null);
   const chartInstance = useRef<Chart | null>(null);
   const { user } = useAuth();
+  const { resolvedTheme } = useTheme();
+  
+  const textColor = resolvedTheme === 'dark' ? '#f8fafc' : '#0f172a';
   
   // Fetch food entries with proper typing
   const { data: todayEntries = [], isLoading } = useQuery<FoodEntryDocument[]>({
@@ -91,10 +95,16 @@ const NutritionChart = () => {
               padding: 15,
               font: {
                 size: 12
-              }
+              },
+              color: textColor
             }
           },
           tooltip: {
+            titleColor: textColor,
+            bodyColor: textColor,
+            backgroundColor: resolvedTheme === 'dark' ? '#1e293b' : '#ffffff',
+            borderColor: resolvedTheme === 'dark' ? '#334155' : '#e2e8f0',
+            borderWidth: 1,
             callbacks: {
               label: function(context) {
                 const label = context.label || '';
@@ -113,11 +123,11 @@ const NutritionChart = () => {
         chartInstance.current.destroy();
       }
     };
-  }, [protein, carbs, fat]);
+  }, [protein, carbs, fat, resolvedTheme, textColor]);
   
   if (isLoading) {
     return (
-      <div className="bg-white rounded-xl shadow-md p-6 animate-pulse">
+      <div className="bg-card text-card-foreground rounded-xl shadow-md p-6 animate-pulse">
         <div className="h-6 bg-slate-200 rounded mb-4"></div>
         <div className="h-52 bg-slate-200 rounded"></div>
       </div>
@@ -125,7 +135,7 @@ const NutritionChart = () => {
   }
   
   return (
-    <div className="bg-white rounded-xl shadow-md p-6">
+    <div className="bg-card text-card-foreground rounded-xl shadow-md p-6">
       <h3 className="font-heading text-xl font-semibold mb-4">Macronutrient Balance</h3>
       <div className="h-52">
         <canvas ref={chartRef}></canvas>

@@ -1,33 +1,32 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import BackButton from '@/components/BackButton';
+import { useQuery } from '@tanstack/react-query';
 
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { 
-  BarChart3, 
-  TrendingUp, 
+import * as LucideIcons from 'lucide-react';
+import {
   Target, 
   Zap, 
   Apple, 
   Droplet, 
-  Activity,
+  Loader2,
   Award,
-  Clock,
-  Flame
+  Sparkles
 } from 'lucide-react';
-// Removed unused useAuth import
 
 interface NutritionData {
   date: string;
+  fullDate: string;
   calories: number;
   protein: number;
   carbs: number;
   fat: number;
   fiber: number;
+  sugar: number;
 }
 
 interface Goal {
@@ -40,91 +39,76 @@ interface Goal {
   deadline: string;
 }
 
+interface Achievement {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  color: string;
+}
+
 export default function Stats() {
-  // Removed unused user and timeRange state
   const [selectedMetric, setSelectedMetric] = useState('calories');
 
-  // Sample data
-  const nutritionData: NutritionData[] = [
-    { date: 'Mon', calories: 1850, protein: 120, carbs: 200, fat: 65, fiber: 25 },
-    { date: 'Tue', calories: 1920, protein: 135, carbs: 180, fat: 70, fiber: 28 },
-    { date: 'Wed', calories: 1780, protein: 110, carbs: 220, fat: 60, fiber: 22 },
-    { date: 'Thu', calories: 2050, protein: 140, carbs: 190, fat: 75, fiber: 30 },
-    { date: 'Fri', calories: 1950, protein: 125, carbs: 210, fat: 68, fiber: 26 },
-    { date: 'Sat', calories: 2100, protein: 150, carbs: 180, fat: 80, fiber: 32 },
-    { date: 'Sun', calories: 1880, protein: 115, carbs: 200, fat: 65, fiber: 24 },
-  ];
+  const { data: statsData, isLoading, error } = useQuery<any>({
+    queryKey: ['/api/stats'],
+    retry: 2, // Retry on transient failures (e.g. slow AI response)
+    staleTime: 5 * 60 * 1000, // Re-fetch stats every 5 minutes instead of Infinity
+  });
 
-  const goals: Goal[] = [
-    {
-      id: '1',
-      name: 'Daily Calories',
-      target: 2000,
-      current: 1880,
-      unit: 'cal',
-      category: 'nutrition',
-      deadline: '2024-12-31'
-    },
-    {
-      id: '2',
-      name: 'Protein Intake',
-      target: 150,
-      current: 125,
-      unit: 'g',
-      category: 'nutrition',
-      deadline: '2024-12-31'
-    },
-    {
-      id: '3',
-      name: 'Workout Sessions',
-      target: 5,
-      current: 4,
-      unit: 'sessions',
-      category: 'fitness',
-      deadline: '2024-12-31'
-    },
-    {
-      id: '4',
-      name: 'Weight Goal',
-      target: 70,
-      current: 72,
-      unit: 'kg',
-      category: 'lifestyle',
-      deadline: '2024-12-31'
-    }
-  ];
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center gradient-bg">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
-  const achievements = [
-    { id: '1', name: '7-Day Streak', description: 'Logged food for 7 consecutive days', icon: Award, color: 'text-yellow-500' },
-    { id: '2', name: 'Protein Master', description: 'Met protein goal for 5 days', icon: Target, color: 'text-blue-500' },
-    { id: '3', name: 'Early Bird', description: 'Logged breakfast for 10 days', icon: Clock, color: 'text-green-500' },
-    { id: '4', name: 'Calorie Counter', description: 'Stayed within calorie range for 2 weeks', icon: Flame, color: 'text-red-500' }
-  ];
+  if (error || !statsData) {
+    console.error("Stats page error state triggered:", { error, hasStatsData: !!statsData, statsData });
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center gradient-bg gap-4">
+        <p className="text-destructive text-lg font-medium">Failed to load statistics.</p>
+        <p className="text-muted-foreground text-sm">
+          {error instanceof Error ? error.message : "Please make sure you are logged in."}
+        </p>
+        <button 
+          className="btn btn-primary btn-sm"
+          onClick={() => window.location.reload()}
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
 
-  const getCurrentValue = () => {
+  const nutritionData: NutritionData[] = statsData.nutritionData || [];
+  const goals: Goal[] = statsData.goals || [];
+  const achievements: Achievement[] = statsData.achievements || [];
+  const insights: string = statsData.insights || "";
+
+  const highestCalorieDay = nutritionData.length > 0 ? nutritionData.reduce((prev, current) => {
+    return (prev.calories > current.calories) ? prev : current;
+  }) : null;
+
+  const getCurrentValue = (metric?: string) => {
+    if (!nutritionData.length) return 0;
     const today = nutritionData[nutritionData.length - 1];
-    return today[selectedMetric as keyof NutritionData] as number;
+    return (today[(metric || selectedMetric) as keyof NutritionData] as number) || 0;
   };
 
-  const getAverageValue = () => {
-    const values = nutritionData.map(d => d[selectedMetric as keyof NutritionData] as number);
+  const getAverageValue = (metric?: string) => {
+    if (!nutritionData.length) return 0;
+    const values = nutritionData.map(d => (d[(metric || selectedMetric) as keyof NutritionData] as number) || 0);
     return Math.round(values.reduce((a, b) => a + b, 0) / values.length);
   };
 
   const getProgressPercentage = (goal: Goal) => {
+    if (!goal.target) return 0;
     return Math.min((goal.current / goal.target) * 100, 100);
   };
 
-  const getMetricIcon = (metric: string) => {
-    switch (metric) {
-      case 'calories': return Zap;
-      case 'protein': return Target;
-      case 'carbs': return Apple;
-      case 'fat': return Droplet;
-      case 'fiber': return Activity;
-      default: return BarChart3;
-    }
-  };
+
 
   const getMetricColor = (metric: string) => {
     switch (metric) {
@@ -133,15 +117,15 @@ export default function Stats() {
       case 'carbs': return 'text-green-500';
       case 'fat': return 'text-yellow-500';
       case 'fiber': return 'text-purple-500';
+      case 'sugar': return 'text-pink-500';
       default: return 'text-primary';
     }
   };
 
-  const MetricIcon = getMetricIcon(selectedMetric);
   const metricColor = getMetricColor(selectedMetric);
 
   return (
-    <div className="min-h-screen gradient-bg theme-transition">
+    <div className="min-h-screen gradient-bg theme-transition pb-20">
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <motion.div 
@@ -151,7 +135,6 @@ export default function Stats() {
           transition={{ duration: 0.5 }}
         >
           <div className="flex items-center gap-4 mb-4">
-            <BackButton />
             <div>
               <h1 className="text-3xl font-bold text-foreground">Nutrition Statistics</h1>
               <p className="text-muted-foreground">Track your progress and analyze your nutrition data</p>
@@ -169,116 +152,50 @@ export default function Stats() {
 
           {/* Overview Tab */}
           <TabsContent value="overview" className="space-y-6">
-            {/* Key Metrics */}
+            
+            {/* AI Insights */}
+            {insights && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5 }}
+              >
+                <Card className="card-shadow theme-transition border-primary/20 bg-primary/5 rounded-3xl">
+                  <CardHeader>
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="h-5 w-5 text-primary" />
+                      <CardTitle className="text-foreground">AI Insights</CardTitle>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-muted-foreground leading-relaxed">
+                      {insights}
+                    </p>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            )}
+
+            {/* Weekly Chart & Highlights */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.1 }}
+              className="grid grid-cols-1 lg:grid-cols-3 gap-6"
             >
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <Card className="card-shadow theme-transition">
-                  <CardContent className="p-6">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 rounded-lg bg-orange-500/10">
-                        <Zap className="h-5 w-5 text-orange-500" />
-                      </div>
-                      <div>
-                        <p className="text-sm text-muted-foreground">Avg. Calories</p>
-                        <p className="text-2xl font-bold text-foreground">1,920</p>
-                      </div>
-                    </div>
-                    <div className="mt-4">
-                      <div className="flex items-center gap-2 text-sm">
-                        <TrendingUp className="h-4 w-4 text-green-500" />
-                        <span className="text-green-500">+5.2%</span>
-                        <span className="text-muted-foreground">vs last week</span>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card className="card-shadow theme-transition">
-                  <CardContent className="p-6">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 rounded-lg bg-blue-500/10">
-                        <Target className="h-5 w-5 text-blue-500" />
-                      </div>
-                      <div>
-                        <p className="text-sm text-muted-foreground">Avg. Protein</p>
-                        <p className="text-2xl font-bold text-foreground">122g</p>
-                      </div>
-                    </div>
-                    <div className="mt-4">
-                      <div className="flex items-center gap-2 text-sm">
-                        <TrendingUp className="h-4 w-4 text-green-500" />
-                        <span className="text-green-500">+8.1%</span>
-                        <span className="text-muted-foreground">vs last week</span>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card className="card-shadow theme-transition">
-                  <CardContent className="p-6">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 rounded-lg bg-green-500/10">
-                        <Apple className="h-5 w-5 text-green-500" />
-                      </div>
-                      <div>
-                        <p className="text-sm text-muted-foreground">Avg. Carbs</p>
-                        <p className="text-2xl font-bold text-foreground">198g</p>
-                      </div>
-                    </div>
-                    <div className="mt-4">
-                      <div className="flex items-center gap-2 text-sm">
-                        <TrendingUp className="h-4 w-4 text-red-500 rotate-180" />
-                        <span className="text-red-500">-2.3%</span>
-                        <span className="text-muted-foreground">vs last week</span>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card className="card-shadow theme-transition">
-                  <CardContent className="p-6">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 rounded-lg bg-yellow-500/10">
-                        <Droplet className="h-5 w-5 text-yellow-500" />
-                      </div>
-                      <div>
-                        <p className="text-sm text-muted-foreground">Avg. Fat</p>
-                        <p className="text-2xl font-bold text-foreground">69g</p>
-                      </div>
-                    </div>
-                    <div className="mt-4">
-                      <div className="flex items-center gap-2 text-sm">
-                        <TrendingUp className="h-4 w-4 text-green-500" />
-                        <span className="text-green-500">+1.8%</span>
-                        <span className="text-muted-foreground">vs last week</span>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            </motion.div>
-
-            {/* Weekly Chart */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.2 }}
-            >
-              <Card className="card-shadow theme-transition">
+              <Card className="card-shadow theme-transition rounded-3xl lg:col-span-2">
                 <CardHeader>
                   <div className="flex items-center justify-between">
-                    <div>
-                      <CardTitle className="text-foreground">Weekly Nutrition Trends</CardTitle>
-                      <CardDescription className="text-muted-foreground">
-                        Your nutrition data over the past week
-                      </CardDescription>
+                    <div className="flex items-center gap-2">
+                      <div className="p-2 bg-primary/10 rounded-xl">
+                        <span className="text-xl">📅</span>
+                      </div>
+                      <div>
+                        <CardTitle className="text-foreground">Weekly Overview</CardTitle>
+                      </div>
                     </div>
                     <Select value={selectedMetric} onValueChange={setSelectedMetric}>
-                      <SelectTrigger className="w-32">
+                      <SelectTrigger className="w-32 rounded-xl">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -287,44 +204,133 @@ export default function Stats() {
                         <SelectItem value="carbs">Carbs</SelectItem>
                         <SelectItem value="fat">Fat</SelectItem>
                         <SelectItem value="fiber">Fiber</SelectItem>
+                        <SelectItem value="sugar">Sugar</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-6">
-                    <div className="flex items-center gap-4">
-                      <div className="flex items-center gap-2">
-                        <MetricIcon className={`h-5 w-5 ${metricColor}`} />
-                        <span className="text-sm font-medium text-foreground">Current: {getCurrentValue()}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <BarChart3 className="h-5 w-5 text-muted-foreground" />
-                        <span className="text-sm text-muted-foreground">Average: {getAverageValue()}</span>
-                      </div>
-                    </div>
-                    
                     {/* Simple Bar Chart */}
-                    <div className="flex items-end justify-between h-32 gap-2">
-                      {nutritionData.map((data, index) => {
-                        const value = data[selectedMetric as keyof NutritionData] as number;
-                        const maxValue = Math.max(...nutritionData.map(d => d[selectedMetric as keyof NutritionData] as number));
-                        const height = (value / maxValue) * 100;
-                        
-                        return (
-                          <div key={index} className="flex-1 flex flex-col items-center">
-                            <div 
-                              className={`w-full rounded-t-sm transition-all duration-300 ${metricColor.replace('text-', 'bg-')} bg-opacity-20`}
-                              style={{ height: `${height}%` }}
-                            />
-                            <span className="text-xs text-muted-foreground mt-2">{data.date}</span>
-                          </div>
-                        );
-                      })}
+                    <div className="flex items-end justify-between h-48 gap-2 pt-4">
+                      {nutritionData.length === 0 ? (
+                        <div className="w-full flex items-center justify-center text-muted-foreground text-sm h-full border border-dashed rounded-2xl">
+                          No data available for this week.
+                        </div>
+                      ) : (
+                        nutritionData.map((data, index) => {
+                          const value = (data[selectedMetric as keyof NutritionData] as number) || 0;
+                          const maxValue = Math.max(...nutritionData.map(d => (d[selectedMetric as keyof NutritionData] as number) || 0), 1);
+                          const height = Math.max((value / maxValue) * 100, 4); // min height of 4% for visibility
+                          
+                          return (
+                            <div key={index} className="flex-1 flex flex-col items-center group relative">
+                              <div className="absolute -top-8 bg-card border border-border shadow-sm px-2 py-1 rounded text-xs opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                                {value} {selectedMetric === 'calories' ? 'kcal' : 'g'}
+                              </div>
+                              <div 
+                                className={`w-full max-w-[40px] rounded-t-xl transition-all duration-300 ${metricColor.replace('text-', 'bg-')} bg-opacity-30 group-hover:bg-opacity-100`}
+                                style={{ height: `${height}%` }}
+                              />
+                              <span className="text-xs text-muted-foreground mt-3 font-medium">
+                                {data.date.substring(0, 3)}
+                              </span>
+                            </div>
+                          );
+                        })
+                      )}
                     </div>
                   </div>
                 </CardContent>
               </Card>
+
+              {/* Highlights Column */}
+              <div className="space-y-6">
+                <Card className="card-shadow theme-transition rounded-3xl h-full flex flex-col justify-center">
+                  <CardHeader>
+                    <CardTitle className="text-foreground text-lg text-center text-muted-foreground">Highest Calorie Day</CardTitle>
+                  </CardHeader>
+                  <CardContent className="flex flex-col items-center text-center">
+                    <div className="w-16 h-16 bg-orange-500/10 rounded-full flex items-center justify-center mb-4">
+                      <Zap className="h-8 w-8 text-orange-500" />
+                    </div>
+                    {highestCalorieDay ? (
+                      <>
+                        <h3 className="text-2xl font-bold text-foreground mb-1">{highestCalorieDay.fullDate.split(',')[0] || highestCalorieDay.date}</h3>
+                        <p className="text-lg text-orange-500 font-semibold">{highestCalorieDay.calories} kcal</p>
+                      </>
+                    ) : (
+                      <p className="text-muted-foreground">Not enough data</p>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            </motion.div>
+
+            {/* Key Metrics */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.2 }}
+            >
+              <h3 className="text-lg font-semibold text-foreground mb-4 mt-8 px-1">Daily Averages</h3>
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <Card className="card-shadow theme-transition rounded-2xl">
+                  <CardContent className="p-5">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-xl bg-orange-500/10">
+                        <Zap className="h-5 w-5 text-orange-500" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Calories</p>
+                        <p className="text-xl font-bold text-foreground">{getAverageValue('calories')}</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="card-shadow theme-transition rounded-2xl">
+                  <CardContent className="p-5">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-xl bg-blue-500/10">
+                        <Target className="h-5 w-5 text-blue-500" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Protein</p>
+                        <p className="text-xl font-bold text-foreground">{getAverageValue('protein')}g</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="card-shadow theme-transition rounded-2xl">
+                  <CardContent className="p-5">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-xl bg-green-500/10">
+                        <Apple className="h-5 w-5 text-green-500" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Carbs</p>
+                        <p className="text-xl font-bold text-foreground">{getAverageValue('carbs')}g</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="card-shadow theme-transition rounded-2xl">
+                  <CardContent className="p-5">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-xl bg-yellow-500/10">
+                        <Droplet className="h-5 w-5 text-yellow-500" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Fat</p>
+                        <p className="text-xl font-bold text-foreground">{getAverageValue('fat')}g</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
             </motion.div>
           </TabsContent>
 
@@ -341,64 +347,71 @@ export default function Stats() {
                   <CardHeader>
                     <CardTitle className="text-foreground">Nutrition Breakdown</CardTitle>
                     <CardDescription className="text-muted-foreground">
-                      Detailed analysis of your nutrition intake
+                      Detailed analysis of your today's nutrition intake
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-6">
                     {[
-                      { name: 'Calories', current: 1880, target: 2000, unit: 'cal', color: 'bg-orange-500' },
-                      { name: 'Protein', current: 125, target: 150, unit: 'g', color: 'bg-blue-500' },
-                      { name: 'Carbs', current: 200, target: 250, unit: 'g', color: 'bg-green-500' },
-                      { name: 'Fat', current: 65, target: 65, unit: 'g', color: 'bg-yellow-500' },
-                      { name: 'Fiber', current: 24, target: 25, unit: 'g', color: 'bg-purple-500' }
-                    ].map((item, index) => (
-                      <div key={index} className="space-y-2">
-                        <div className="flex justify-between text-sm">
-                          <span className="text-foreground">{item.name}</span>
-                          <span className="text-muted-foreground">
-                            {item.current}/{item.target} {item.unit}
-                          </span>
+                      { name: 'Calories', metric: 'calories', target: goals.find(g => g.name === 'Daily Calories')?.target || 2000, unit: 'cal', color: 'bg-orange-500' },
+                      { name: 'Protein', metric: 'protein', target: goals.find(g => g.name === 'Protein Intake')?.target || 150, unit: 'g', color: 'bg-blue-500' },
+                      { name: 'Carbs', metric: 'carbs', target: goals.find(g => g.name === 'Carbs Target')?.target || 250, unit: 'g', color: 'bg-green-500' },
+                      { name: 'Fat', metric: 'fat', target: goals.find(g => g.name === 'Fat Limit')?.target || 65, unit: 'g', color: 'bg-yellow-500' },
+                      { name: 'Fiber', metric: 'fiber', target: goals.find(g => g.name === 'Fiber Goal')?.target || 25, unit: 'g', color: 'bg-purple-500' },
+                      { name: 'Sugar', metric: 'sugar', target: goals.find(g => g.name === 'Sugar Limit')?.target || 50, unit: 'g', color: 'bg-pink-500' },
+                    ].map((item, index) => {
+                      const current = getCurrentValue(item.metric);
+                      const percentage = Math.min((current / item.target) * 100, 100);
+                      
+                      return (
+                        <div key={index} className="space-y-2">
+                          <div className="flex justify-between text-sm">
+                            <span className="text-foreground">{item.name}</span>
+                            <span className="text-muted-foreground">
+                              {current}/{item.target} {item.unit}
+                            </span>
+                          </div>
+                          <Progress 
+                            value={percentage} 
+                            className="h-2"
+                            indicatorColor={item.color}
+                          />
                         </div>
-                        <Progress 
-                          value={(item.current / item.target) * 100} 
-                          className="h-2"
-                        />
-                      </div>
-                    ))}
+                      );
+                    })}
                   </CardContent>
                 </Card>
 
-                {/* Meal Distribution */}
+                {/* Meal Distribution Placeholder (Currently no specific meal grouping in standard data) */}
                 <Card className="card-shadow theme-transition">
                   <CardHeader>
-                    <CardTitle className="text-foreground">Meal Distribution</CardTitle>
+                    <CardTitle className="text-foreground">Daily Distribution Overview</CardTitle>
                     <CardDescription className="text-muted-foreground">
-                      How your calories are distributed across meals
+                      Track consistency across recent days
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
-                      {[
-                        { meal: 'Breakfast', calories: 450, percentage: 24 },
-                        { meal: 'Lunch', calories: 600, percentage: 32 },
-                        { meal: 'Dinner', calories: 550, percentage: 29 },
-                        { meal: 'Snacks', calories: 280, percentage: 15 }
-                      ].map((item, index) => (
-                        <div key={index} className="flex items-center justify-between">
-                          <span className="text-sm text-foreground">{item.meal}</span>
-                          <div className="flex items-center gap-2">
-                            <div className="w-20 bg-muted rounded-full h-2">
-                              <div 
-                                className="bg-primary h-2 rounded-full transition-all duration-300"
-                                style={{ width: `${item.percentage}%` }}
-                              />
+                      {nutritionData.slice(-4).reverse().map((item, index) => {
+                        const dayGoal = goals.find(g => g.name === 'Daily Calories')?.target || 2000;
+                        const percentage = Math.min((item.calories / dayGoal) * 100, 100);
+                        
+                        return (
+                          <div key={index} className="flex items-center justify-between">
+                            <span className="text-sm text-foreground">{item.date}</span>
+                            <div className="flex items-center gap-2">
+                              <div className="w-20 bg-muted rounded-full h-2">
+                                <div 
+                                  className="bg-primary h-2 rounded-full transition-all duration-300"
+                                  style={{ width: `${percentage}%` }}
+                                />
+                              </div>
+                              <span className="text-sm text-muted-foreground w-12">
+                                {item.calories} cal
+                              </span>
                             </div>
-                            <span className="text-sm text-muted-foreground w-12">
-                              {item.calories} cal
-                            </span>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </CardContent>
                 </Card>
@@ -435,12 +448,6 @@ export default function Stats() {
                         </span>
                       </div>
                       <Progress value={getProgressPercentage(goal)} className="h-3" />
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground">Deadline</span>
-                        <span className="text-foreground">
-                          {new Date(goal.deadline).toLocaleDateString()}
-                        </span>
-                      </div>
                     </CardContent>
                   </Card>
                 ))}
@@ -455,26 +462,34 @@ export default function Stats() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5 }}
             >
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {achievements.map((achievement) => {
-                  const Icon = achievement.icon;
-                  return (
-                    <Card key={achievement.id} className="card-shadow theme-transition">
-                      <CardContent className="p-6">
-                        <div className="flex items-center gap-4">
-                          <div className={`p-3 rounded-full bg-muted`}>
-                            <Icon className={`h-6 w-6 ${achievement.color}`} />
+              {achievements.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {achievements.map((achievement) => {
+                    const Icon = (LucideIcons as any)[achievement.icon] || Award;
+                    return (
+                      <Card key={achievement.id} className="card-shadow theme-transition">
+                        <CardContent className="p-6">
+                          <div className="flex items-center gap-4">
+                            <div className={`p-3 rounded-full bg-muted`}>
+                              <Icon className={`h-6 w-6 ${achievement.color}`} />
+                            </div>
+                            <div>
+                              <h3 className="font-semibold text-foreground">{achievement.name}</h3>
+                              <p className="text-sm text-muted-foreground">{achievement.description}</p>
+                            </div>
                           </div>
-                          <div>
-                            <h3 className="font-semibold text-foreground">{achievement.name}</h3>
-                            <p className="text-sm text-muted-foreground">{achievement.description}</p>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  );
-                })}
-              </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="text-center py-12">
+                  <Award className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-foreground">No Achievements Yet</h3>
+                  <p className="text-muted-foreground">Keep tracking your meals to unlock AI-generated achievements!</p>
+                </div>
+              )}
             </motion.div>
           </TabsContent>
         </Tabs>

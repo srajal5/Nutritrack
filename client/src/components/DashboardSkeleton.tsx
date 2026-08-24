@@ -35,22 +35,22 @@ export default function DashboardSkeleton() {
     >
       {/* First column */}
       <motion.div className="space-y-6" variants={itemVariants}>
-        <motion.div className="bg-white/10 backdrop-blur-lg rounded-xl p-6 border border-white/10" variants={itemVariants}>
+        <motion.div className="bg-card backdrop-blur-lg rounded-xl p-6 border border-white/10" variants={itemVariants}>
           <div className="space-y-4">
-            <div className="h-8 w-1/3 bg-white/10 rounded animate-pulse" />
+            <div className="h-8 w-1/3 bg-card rounded animate-pulse" />
             <div className="space-y-2">
-              <div className="h-4 w-full bg-white/10 rounded animate-pulse" />
-              <div className="h-4 w-2/3 bg-white/10 rounded animate-pulse" />
+              <div className="h-4 w-full bg-card rounded animate-pulse" />
+              <div className="h-4 w-2/3 bg-card rounded animate-pulse" />
             </div>
           </div>
         </motion.div>
-        <motion.div className="bg-white/10 backdrop-blur-lg rounded-xl p-6 border border-white/10" variants={itemVariants}>
+        <motion.div className="bg-card backdrop-blur-lg rounded-xl p-6 border border-white/10" variants={itemVariants}>
           <div className="space-y-4">
-            <div className="h-8 w-1/2 bg-white/10 rounded animate-pulse" />
+            <div className="h-8 w-1/2 bg-card rounded animate-pulse" />
             <div className="space-y-2">
-              <div className="h-10 w-full bg-white/10 rounded animate-pulse" />
-              <div className="h-10 w-full bg-white/10 rounded animate-pulse" />
-              <div className="h-10 w-full bg-white/10 rounded animate-pulse" />
+              <div className="h-10 w-full bg-card rounded animate-pulse" />
+              <div className="h-10 w-full bg-card rounded animate-pulse" />
+              <div className="h-10 w-full bg-card rounded animate-pulse" />
             </div>
           </div>
         </motion.div>
@@ -58,39 +58,39 @@ export default function DashboardSkeleton() {
       
       {/* Second column */}
       <motion.div className="space-y-6" variants={itemVariants}>
-        <motion.div className="bg-white/10 backdrop-blur-lg rounded-xl p-6 border border-white/10" variants={itemVariants}>
+        <motion.div className="bg-card backdrop-blur-lg rounded-xl p-6 border border-white/10" variants={itemVariants}>
           <div className="space-y-4">
-            <div className="h-8 w-1/3 bg-white/10 rounded animate-pulse" />
-            <div className="h-48 w-full bg-white/10 rounded animate-pulse" />
+            <div className="h-8 w-1/3 bg-card rounded animate-pulse" />
+            <div className="h-48 w-full bg-card rounded animate-pulse" />
           </div>
         </motion.div>
-        <motion.div className="bg-white/10 backdrop-blur-lg rounded-xl p-6 border border-white/10" variants={itemVariants}>
+        <motion.div className="bg-card backdrop-blur-lg rounded-xl p-6 border border-white/10" variants={itemVariants}>
           <div className="space-y-4">
-            <div className="h-8 w-1/3 bg-white/10 rounded animate-pulse" />
-            <div className="h-48 w-full bg-white/10 rounded animate-pulse" />
+            <div className="h-8 w-1/3 bg-card rounded animate-pulse" />
+            <div className="h-48 w-full bg-card rounded animate-pulse" />
           </div>
         </motion.div>
       </motion.div>
       
       {/* Third column */}
       <motion.div className="space-y-6 lg:col-span-1" variants={itemVariants}>
-        <motion.div className="bg-white/10 backdrop-blur-lg rounded-xl p-6 border border-white/10" variants={itemVariants}>
+        <motion.div className="bg-card backdrop-blur-lg rounded-xl p-6 border border-white/10" variants={itemVariants}>
           <HealthStatsSkeleton />
         </motion.div>
-        <motion.div className="bg-white/10 backdrop-blur-lg rounded-xl p-6 border border-white/10" variants={itemVariants}>
+        <motion.div className="bg-card backdrop-blur-lg rounded-xl p-6 border border-white/10" variants={itemVariants}>
           <div className="space-y-4">
-            <div className="h-8 w-1/3 bg-white/10 rounded animate-pulse" />
-            <div className="h-48 w-full bg-white/10 rounded animate-pulse" />
+            <div className="h-8 w-1/3 bg-card rounded animate-pulse" />
+            <div className="h-48 w-full bg-card rounded animate-pulse" />
           </div>
         </motion.div>
-        <motion.div className="bg-white/10 backdrop-blur-lg rounded-xl p-6 border border-white/10" variants={itemVariants}>
+        <motion.div className="bg-card backdrop-blur-lg rounded-xl p-6 border border-white/10" variants={itemVariants}>
           <div className="space-y-4">
-            <div className="h-8 w-1/3 bg-white/10 rounded animate-pulse" />
+            <div className="h-8 w-1/3 bg-card rounded animate-pulse" />
             <div className="space-y-2">
               {[...Array(3)].map((_, i) => (
                 <motion.div 
                   key={i} 
-                  className="h-16 w-full bg-white/10 rounded animate-pulse" 
+                  className="h-16 w-full bg-card rounded animate-pulse" 
                   variants={itemVariants}
                 />
               ))}
@@ -101,24 +101,24 @@ export default function DashboardSkeleton() {
       
       {/* Full width sections */}
       <motion.div className="md:col-span-2 lg:col-span-3 space-y-6" variants={itemVariants}>
-        <motion.div className="bg-white/10 backdrop-blur-lg rounded-xl p-6 border border-white/10" variants={itemVariants}>
+        <motion.div className="bg-card backdrop-blur-lg rounded-xl p-6 border border-white/10" variants={itemVariants}>
           <div className="space-y-4">
-            <div className="h-8 w-1/3 bg-white/10 rounded animate-pulse" />
+            <div className="h-8 w-1/3 bg-card rounded animate-pulse" />
             <div className="space-y-2">
               {[...Array(3)].map((_, i) => (
                 <motion.div 
                   key={i} 
-                  className="h-24 w-full bg-white/10 rounded animate-pulse" 
+                  className="h-24 w-full bg-card rounded animate-pulse" 
                   variants={itemVariants}
                 />
               ))}
             </div>
           </div>
         </motion.div>
-        <motion.div className="bg-white/10 backdrop-blur-lg rounded-xl p-6 border border-white/10" variants={itemVariants}>
+        <motion.div className="bg-card backdrop-blur-lg rounded-xl p-6 border border-white/10" variants={itemVariants}>
           <div className="space-y-4">
-            <div className="h-8 w-1/3 bg-white/10 rounded animate-pulse" />
-            <div className="h-64 w-full bg-white/10 rounded animate-pulse" />
+            <div className="h-8 w-1/3 bg-card rounded animate-pulse" />
+            <div className="h-64 w-full bg-card rounded animate-pulse" />
           </div>
         </motion.div>
       </motion.div>

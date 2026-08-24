@@ -21,7 +21,6 @@ const Header = () => {
           <Link href="/tracker" className="text-foreground font-medium hover:text-primary transition-colors">Tracker</Link>
           <Link href="/ai-coach" className="text-foreground font-medium hover:text-primary transition-colors">AI Coach</Link>
           <Link href="/stats" className="text-foreground font-medium hover:text-primary transition-colors">Stats</Link>
-          <Link href="/theme-demo" className="text-foreground font-medium hover:text-primary transition-colors">Theme Demo</Link>
         </nav>
 
         <div className="flex items-center space-x-4">
@@ -52,7 +51,6 @@ const Header = () => {
               <Link href="/tracker" className="text-foreground font-medium hover:text-primary transition-colors py-2">Tracker</Link>
               <Link href="/ai-coach" className="text-foreground font-medium hover:text-primary transition-colors py-2">AI Coach</Link>
               <Link href="/stats" className="text-foreground font-medium hover:text-primary transition-colors py-2">Stats</Link>
-              <Link href="/theme-demo" className="text-foreground font-medium hover:text-primary transition-colors py-2">Theme Demo</Link>
               <Link href="/auth">
                 <Button className="bg-primary hover:bg-primary/90 transition-colors mt-2 w-full">
                   Sign In

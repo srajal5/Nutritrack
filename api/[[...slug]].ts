@@ -5,6 +5,7 @@ import { registerRoutes } from "../server/routes";
 import { connectDB } from "../server/db";
 
 const app = express();
+app.disable('x-powered-by');
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 

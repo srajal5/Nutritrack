@@ -39,7 +39,7 @@ const Home = () => {
   const scrollToFeatures = useRef<HTMLDivElement>(null);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-base-100 via-base-200 to-base-300">
+    <div className="min-h-screen bg-gradient-to-br from-base-100 via-base-200 to-base-300 pb-24 md:pb-0">
       <Header />
       
       {/* Hero Section with 3D effects */}
@@ -99,7 +99,7 @@ const Home = () => {
             </motion.h1>
 
             <motion.p 
-              className="text-xl md:text-2xl text-base-content/80 mb-8 max-w-4xl mx-auto leading-relaxed"
+              className="text-xl md:text-2xl text-muted-foreground mb-8 max-w-4xl mx-auto leading-relaxed"
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.2 }}
@@ -120,7 +120,7 @@ const Home = () => {
                 className="group"
               >
                 <Link href="/auth">
-                  <button className="btn btn-primary btn-lg gap-3 shadow-2xl hover:shadow-primary/50 transition-all duration-300 transform group-hover:-translate-y-1">
+                  <button className="btn btn-primary btn-lg flex items-center justify-center gap-3 whitespace-nowrap shadow-2xl hover:shadow-primary/50 transition-all duration-300 transform group-hover:-translate-y-1">
                     <Sparkles className="w-5 h-5 group-hover:rotate-12 transition-transform" />
                     Get Started
                   </button>
@@ -133,7 +133,7 @@ const Home = () => {
                 className="group"
               >
                 <button 
-                  className="btn btn-outline btn-lg gap-3 shadow-xl hover:shadow-lg transition-all duration-300 transform group-hover:-translate-y-1 border-2"
+                  className="btn btn-outline btn-lg flex items-center justify-center gap-3 whitespace-nowrap shadow-xl hover:shadow-lg transition-all duration-300 transform group-hover:-translate-y-1 border-2"
                   onClick={() => scrollToFeatures.current?.scrollIntoView({ behavior: 'smooth' })}
                 >
                   <Target className="w-5 h-5 group-hover:scale-110 transition-transform" />
@@ -163,7 +163,7 @@ const Home = () => {
                   <div className="text-3xl font-bold text-primary group-hover:text-secondary transition-colors">
                     {stat.number}
                   </div>
-                  <div className="text-sm text-base-content/70 flex items-center justify-center gap-1">
+                  <div className="text-sm text-muted-foreground flex items-center justify-center gap-1">
                     {stat.icon}
                     {stat.label}
                   </div>
@@ -175,7 +175,7 @@ const Home = () => {
       </section>
 
       {/* Features Section with enhanced cards */}
-      <section ref={scrollToFeatures} className="py-24 bg-base-100">
+      <section ref={scrollToFeatures} className="py-24 bg-background">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div 
             className="text-center mb-20"
@@ -184,10 +184,10 @@ const Home = () => {
             transition={{ duration: 0.8 }}
             viewport={{ once: true }}
           >
-            <h2 className="text-4xl md:text-5xl font-bold text-base-content mb-6">
+            <h2 className="text-4xl md:text-5xl font-bold text-foreground mb-6">
               Why Choose <span className="text-primary">NutriTrackAI</span>?
             </h2>
-            <p className="text-xl text-base-content/70 max-w-3xl mx-auto leading-relaxed">
+            <p className="text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
               Our AI-powered platform makes nutrition tracking effortless and insightful
             </p>
           </motion.div>
@@ -203,7 +203,7 @@ const Home = () => {
                 whileHover={{ scale: 1.05, y: -10 }}
                 className="group"
               >
-                <div className={`card bg-base-200 shadow-xl hover:shadow-2xl transition-all duration-500 border border-base-300 ${feature.bgColorClass}`}>
+                <div className={`card bg-secondary shadow-xl hover:shadow-2xl transition-all duration-500 border border-border ${feature.bgColorClass}`}>
                   <div className="card-body text-center p-8">
                     <motion.div
                       className={`w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center ${feature.bgColorClass} group-hover:scale-110 transition-transform duration-300`}
@@ -214,10 +214,10 @@ const Home = () => {
                         {feature.icon}
                       </div>
                     </motion.div>
-                    <h3 className="card-title text-xl font-bold text-base-content mb-3 justify-center">
+                    <h3 className="card-title text-xl font-bold text-foreground mb-3 justify-center">
                       {feature.title}
                     </h3>
-                    <p className="text-base-content/70 leading-relaxed">
+                    <p className="text-muted-foreground leading-relaxed">
                       {feature.description}
                     </p>
                   </div>
@@ -238,10 +238,10 @@ const Home = () => {
             transition={{ duration: 0.8 }}
             viewport={{ once: true }}
           >
-            <h2 className="text-4xl md:text-5xl font-bold text-base-content mb-6">
+            <h2 className="text-4xl md:text-5xl font-bold text-foreground mb-6">
               See It In <span className="text-primary">Action</span>
             </h2>
-            <p className="text-xl text-base-content/70">
+            <p className="text-xl text-muted-foreground">
               Experience the power of AI-driven nutrition tracking
             </p>
           </motion.div>
@@ -254,10 +254,10 @@ const Home = () => {
               transition={{ duration: 0.8 }}
               viewport={{ once: true }}
             >
-              <h3 className="text-3xl font-bold text-base-content">
+              <h3 className="text-3xl font-bold text-foreground">
                 Smart Food Analysis
               </h3>
-              <p className="text-lg text-base-content/70 leading-relaxed">
+              <p className="text-lg text-muted-foreground leading-relaxed">
                 Simply describe what you ate, and our AI will analyze it to provide accurate nutritional information, including calories, macronutrients, and micronutrients.
               </p>
               
@@ -276,10 +276,10 @@ const Home = () => {
                     transition={{ duration: 0.6, delay: index * 0.1 }}
                     viewport={{ once: true }}
                   >
-                    <div className={`${item.color} bg-base-100 p-2 rounded-full shadow-md`}>
+                    <div className={`${item.color} bg-background p-2 rounded-full shadow-md`}>
                       {item.icon}
                     </div>
-                    <span className="text-base-content/80 font-medium">{item.text}</span>
+                    <span className="text-muted-foreground font-medium">{item.text}</span>
                   </motion.div>
                 ))}
               </div>
@@ -293,7 +293,7 @@ const Home = () => {
               viewport={{ once: true }}
               whileHover={{ scale: 1.02 }}
             >
-              <div className="card bg-base-100 shadow-2xl border border-base-300">
+              <div className="card bg-background shadow-2xl border border-border">
                 <div className="card-body p-6">
                   <FoodEntryForm />
                 </div>
@@ -343,7 +343,7 @@ const Home = () => {
               repeat: Infinity, 
               ease: "linear" 
             }}
-            className="absolute top-10 right-10 w-32 h-32 bg-white/10 rounded-full"
+            className="absolute top-10 right-10 w-32 h-32 bg-card rounded-full"
           />
           <motion.div
             animate={{ 
@@ -355,7 +355,7 @@ const Home = () => {
               repeat: Infinity, 
               ease: "linear" 
             }}
-            className="absolute bottom-10 left-10 w-24 h-24 bg-white/10 rounded-full"
+            className="absolute bottom-10 left-10 w-24 h-24 bg-card rounded-full"
           />
         </div>
 
@@ -366,10 +366,10 @@ const Home = () => {
             transition={{ duration: 0.8 }}
             viewport={{ once: true }}
           >
-            <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
+            <h2 className="text-4xl md:text-5xl font-bold text-primary-foreground mb-6">
               Ready to Transform Your Health?
             </h2>
-            <p className="text-xl text-white/90 mb-10 max-w-3xl mx-auto leading-relaxed">
+            <p className="text-xl text-foreground mb-10 max-w-3xl mx-auto leading-relaxed">
               Join thousands of users who are already achieving their health goals with NutriTrackAI
             </p>
             
@@ -379,7 +379,7 @@ const Home = () => {
               className="inline-block"
             >
               <Link href="/auth">
-                <button className="btn btn-lg bg-white text-primary hover:bg-gray-100 shadow-2xl hover:shadow-white/50 transition-all duration-300 transform hover:-translate-y-1 border-0">
+                <button className="btn btn-lg bg-card text-card-foreground text-primary hover:bg-secondary shadow-2xl hover:shadow-white/50 transition-all duration-300 transform hover:-translate-y-1 border-0">
                   <Sparkles className="w-5 h-5 mr-2" />
                   Start Your Journey Today
                 </button>

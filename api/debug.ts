@@ -47,7 +47,7 @@ export default async function handler(req: any, res: any) {
       const testUserData = {
         username: `testuser_${Date.now()}`,
         email: `test_${Date.now()}@example.com`,
-        password: 'hashedpassword123',
+        password: process.env.TEST_PASSWORD || String(Date.now()),
         firebaseId: `test_${Date.now()}`,
         createdAt: new Date(),
         updatedAt: new Date()

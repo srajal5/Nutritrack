@@ -19,6 +19,7 @@ export interface FoodEntryDocument {
   id: number;
   userId: number;
   name: string;
+  description?: string;
   calories: number;
   protein: number;
   carbs: number;
@@ -26,10 +27,12 @@ export interface FoodEntryDocument {
   fiber?: number;
   sugar?: number;
   servingSize: string;
-  timestamp: string;
-  imageUrl?: string;
+  entryDate: string;
   mealType?: string;
+  imageUrl?: string;
   aiAnalysis?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface NutritionGoalDocument {

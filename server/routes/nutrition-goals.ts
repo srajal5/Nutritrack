@@ -20,7 +20,9 @@ router.get('/', ensureAuthenticated, async (req, res) => {
         calorieGoal: 2100,
         proteinGoal: 120,
         carbGoal: 230,
-        fatGoal: 70
+        fatGoal: 70,
+        fiberGoal: 25,
+        sugarGoal: 50
       });
     }
 
@@ -36,7 +38,9 @@ const nutritionGoalsSchema = z.object({
   calorieGoal: z.number().min(0),
   proteinGoal: z.number().min(0),
   carbGoal: z.number().min(0),
-  fatGoal: z.number().min(0)
+  fatGoal: z.number().min(0),
+  fiberGoal: z.number().min(0),
+  sugarGoal: z.number().min(0)
 });
 
 router.put('/', ensureAuthenticated, async (req, res) => {

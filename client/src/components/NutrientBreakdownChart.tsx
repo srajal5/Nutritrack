@@ -3,12 +3,14 @@ import { useQuery } from '@tanstack/react-query';
 import { Chart, PolarAreaController, RadialLinearScale, ArcElement, Tooltip } from 'chart.js';
 import { Progress } from '@/components/ui/progress';
 import { FoodEntryDocument } from '../types';
+import { useTheme } from '@/components/ThemeProvider';
 
 Chart.register(PolarAreaController, RadialLinearScale, ArcElement, Tooltip);
 
 const NutrientBreakdownChart = ({ userId = 1 }) => {
   const chartRef = useRef<HTMLCanvasElement>(null);
   const chartInstance = useRef<Chart | null>(null);
+  const { resolvedTheme } = useTheme();
   
   // Fetch food entries
   const { data: todayEntries = [] } = useQuery<FoodEntryDocument[]>({
@@ -72,6 +74,11 @@ const NutrientBreakdownChart = ({ userId = 1 }) => {
             display: false
           },
           tooltip: {
+            backgroundColor: resolvedTheme === 'dark' ? '#1e293b' : '#ffffff',
+            titleColor: resolvedTheme === 'dark' ? '#f8fafc' : '#0f172a',
+            bodyColor: resolvedTheme === 'dark' ? '#f8fafc' : '#0f172a',
+            borderColor: resolvedTheme === 'dark' ? '#334155' : '#e2e8f0',
+            borderWidth: 1,
             callbacks: {
               label: function(context) {
                 const label = context.label || '';
@@ -90,10 +97,10 @@ const NutrientBreakdownChart = ({ userId = 1 }) => {
         chartInstance.current.destroy();
       }
     };
-  }, [proteinPct, carbsPct, fatPct]);
+  }, [proteinPct, carbsPct, fatPct, resolvedTheme]);
   
   return (
-    <div className="bg-white rounded-xl shadow-md p-6">
+    <div className="bg-card text-card-foreground rounded-xl shadow-md p-6">
       <h3 className="font-heading text-xl font-semibold mb-4">Nutrient Breakdown</h3>
       <div className="grid grid-cols-2 gap-4">
         <div className="h-40">
@@ -105,21 +112,21 @@ const NutrientBreakdownChart = ({ userId = 1 }) => {
               <span className="text-sm font-medium">Protein</span>
               <span className="text-sm font-mono">{protein}g ({proteinPct}%)</span>
             </div>
-            <Progress value={proteinPct} className="h-2 bg-neutral-100" />
+            <Progress value={proteinPct} className="h-2 bg-secondary" />
           </div>
           <div>
             <div className="flex justify-between items-center mb-1">
               <span className="text-sm font-medium">Carbs</span>
               <span className="text-sm font-mono">{carbs}g ({carbsPct}%)</span>
             </div>
-            <Progress value={carbsPct} className="h-2 bg-neutral-100" />
+            <Progress value={carbsPct} className="h-2 bg-secondary" />
           </div>
           <div>
             <div className="flex justify-between items-center mb-1">
               <span className="text-sm font-medium">Fat</span>
               <span className="text-sm font-mono">{fat}g ({fatPct}%)</span>
             </div>
-            <Progress value={fatPct} className="h-2 bg-neutral-100" />
+            <Progress value={fatPct} className="h-2 bg-secondary" />
           </div>
         </div>
       </div>

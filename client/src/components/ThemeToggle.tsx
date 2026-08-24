@@ -20,7 +20,7 @@ export function ThemeToggle() {
   return (
     <button
       onClick={toggleTheme}
-      className="btn btn-ghost btn-circle relative h-10 w-10 rounded-full bg-base-200/50 hover:bg-base-300/80 border border-base-300/50 hover:border-primary/50 transition-all duration-300 group overflow-hidden"
+      className="btn btn-ghost btn-circle relative h-10 w-10 rounded-full bg-secondary/50 hover:bg-muted/80 border border-border/50 hover:border-primary/50 transition-all duration-300 group overflow-hidden"
     >
       <motion.div
         className="absolute inset-0 bg-gradient-to-br from-primary/20 to-primary/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"

@@ -7,10 +7,10 @@ export default function DailySummary() {
   if (isLoading || !dailySummary || !nutritionGoals) {
     return (
       <div className="space-y-4">
-        <div className="h-4 w-1/3 bg-white/10 rounded animate-pulse" />
+        <div className="h-4 w-1/3 bg-card rounded animate-pulse" />
         <div className="space-y-2">
-          <div className="h-4 w-full bg-white/10 rounded animate-pulse" />
-          <div className="h-4 w-2/3 bg-white/10 rounded animate-pulse" />
+          <div className="h-4 w-full bg-card rounded animate-pulse" />
+          <div className="h-4 w-2/3 bg-card rounded animate-pulse" />
         </div>
       </div>
     );
@@ -25,8 +25,8 @@ export default function DailySummary() {
     <div className="space-y-6">
       <div className="space-y-2">
         <div className="flex justify-between items-center">
-          <span className="text-white/70">Daily Calories</span>
-          <span className="text-white font-medium">
+          <span className="text-foreground">Daily Calories</span>
+          <span className="text-primary-foreground font-medium">
             {dailySummary.totalCalories} / {nutritionGoals.dailyCalories} kcal
           </span>
         </div>
@@ -36,8 +36,8 @@ export default function DailySummary() {
       <div className="grid grid-cols-3 gap-4">
         <div className="space-y-2">
           <div className="flex justify-between items-center">
-            <span className="text-white/70">Protein</span>
-            <span className="text-white font-medium">
+            <span className="text-foreground">Protein</span>
+            <span className="text-primary-foreground font-medium">
               {dailySummary.protein}g
             </span>
           </div>
@@ -46,8 +46,8 @@ export default function DailySummary() {
 
         <div className="space-y-2">
           <div className="flex justify-between items-center">
-            <span className="text-white/70">Carbs</span>
-            <span className="text-white font-medium">
+            <span className="text-foreground">Carbs</span>
+            <span className="text-primary-foreground font-medium">
               {dailySummary.carbs}g
             </span>
           </div>
@@ -56,8 +56,8 @@ export default function DailySummary() {
 
         <div className="space-y-2">
           <div className="flex justify-between items-center">
-            <span className="text-white/70">Fat</span>
-            <span className="text-white font-medium">
+            <span className="text-foreground">Fat</span>
+            <span className="text-primary-foreground font-medium">
               {dailySummary.fat}g
             </span>
           </div>
@@ -67,7 +67,7 @@ export default function DailySummary() {
 
       <div className="pt-4 border-t border-white/10">
         <div className="flex justify-between items-center">
-          <span className="text-white/70">Remaining Calories</span>
+          <span className="text-foreground">Remaining Calories</span>
           <span className={`font-medium ${dailySummary.remainingCalories > 0 ? 'text-green-400' : 'text-red-400'}`}>
             {dailySummary.remainingCalories} kcal
           </span>
