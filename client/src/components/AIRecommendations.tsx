@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { useAuth } from '@/hooks/use-auth';
 
 interface Recommendation {
   id: string;
@@ -6,7 +7,9 @@ interface Recommendation {
   description: string;
 }
 
-const AIRecommendations = ({ userId = 1 }) => {
+const AIRecommendations = () => {
+  const { user } = useAuth();
+  const userId = user?.id;
   // Fetch AI recommendations
   const { data: recommendations = [], isLoading, isError } = useQuery<Recommendation[]>({
     queryKey: [`/api/recommendations?userId=${userId}`],

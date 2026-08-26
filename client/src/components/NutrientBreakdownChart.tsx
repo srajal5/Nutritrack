@@ -4,10 +4,13 @@ import { Chart, PolarAreaController, RadialLinearScale, ArcElement, Tooltip } fr
 import { Progress } from '@/components/ui/progress';
 import { FoodEntryDocument } from '../types';
 import { useTheme } from '@/components/ThemeProvider';
+import { useAuth } from '@/hooks/use-auth';
 
 Chart.register(PolarAreaController, RadialLinearScale, ArcElement, Tooltip);
 
-const NutrientBreakdownChart = ({ userId = 1 }) => {
+const NutrientBreakdownChart = () => {
+  const { user } = useAuth();
+  const userId = user?.id;
   const chartRef = useRef<HTMLCanvasElement>(null);
   const chartInstance = useRef<Chart | null>(null);
   const { resolvedTheme } = useTheme();

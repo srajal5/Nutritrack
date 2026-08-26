@@ -2,6 +2,7 @@ import { Router } from "express";
 import { ensureAuthenticated } from "../middleware";
 import storage from "../storage";
 import { generatePersonalizedPlan } from "../openai";
+import { calculateBackendNutritionTargets } from "../nutrition-calculator";
 
 const router = Router();
 
@@ -23,26 +24,108 @@ router.get("/", ensureAuthenticated, async (req, res) => {
   }
 });
 
-// Update the user's profile
+// Update the user's profile & save personalized nutrition plan
 router.put("/", ensureAuthenticated, async (req, res) => {
   try {
     const userId = req.user!.id;
-    const profileData = req.body;
+    const body = req.body || {};
     
-    let updatedProfile = await storage.updateUserProfile(userId, profileData);
-    
-    // Sync with NutritionGoal if nutrition targets are provided
-    if (updatedProfile.nutrition?.calorieTarget && updatedProfile.nutrition?.proteinTarget) {
-      await storage.setNutritionGoal({
-        userId,
-        calorieGoal: updatedProfile.nutrition.calorieTarget,
-        proteinGoal: updatedProfile.nutrition.proteinTarget,
-        carbGoal: Math.round(updatedProfile.nutrition.calorieTarget * 0.4 / 4), // 40% carbs
-        fatGoal: Math.round(updatedProfile.nutrition.calorieTarget * 0.3 / 9),  // 30% fat
-        fiberGoal: 25,
-        sugarGoal: 50
-      } as any);
-    }
+    // Normalize goal identifiers from manual or AI structures
+    const primaryGoal = body.goal?.primaryGoal || body.goal?.primary || 'MAINTAIN_WEIGHT';
+    const secondaryGoals = Array.isArray(body.goal?.secondaryGoals) 
+      ? body.goal.secondaryGoals 
+      : (Array.isArray(body.goal?.secondary) ? body.goal.secondary : []);
+
+    // Extract profile stats
+    const age = Number(body.profile?.age) || 30;
+    const gender = body.profile?.gender || 'male';
+    const heightCm = Number(body.profile?.heightCm) || 170;
+    const weightKg = Number(body.profile?.weightKg) || 70;
+    const targetWeightKg = Number(body.profile?.targetWeightKg) || weightKg;
+    const activityLevelStr = typeof body.profile?.activityLevel === 'string' ? body.profile.activityLevel : 'MODERATE';
+    const activityLevel = activityLevelStr.toUpperCase();
+
+    const fitnessLevelStr = typeof body.profile?.fitnessLevel === 'string' ? body.profile.fitnessLevel : 'BEGINNER';
+    const fitnessLevel = fitnessLevelStr.toUpperCase();
+
+    // Workout details
+    const daysPerWeek = Number(body.workout?.daysPerWeek) || 3;
+    const location = body.workout?.location || 'HOME';
+    const equipment = Array.isArray(body.workout?.equipment) ? body.workout.equipment : [];
+
+    // Compute backend nutrition targets deterministically
+    const calculatedTargets = calculateBackendNutritionTargets({
+      age,
+      weightKg,
+      heightCm,
+      gender,
+      activityLevel,
+      goal: primaryGoal
+    });
+
+    const calorieTarget = Number(body.nutrition?.calorieTarget) || calculatedTargets.calorieTarget;
+    const proteinTarget = Number(body.nutrition?.proteinTarget) || calculatedTargets.proteinTarget;
+
+    // Normalize AI plan fields
+    const summary = body.plan?.summary || body.aiPlan?.summary || body.planSummary || 'Personalized Nutrition & Training Plan';
+    const weeklyWorkoutPlan = body.plan?.weeklyWorkoutPlan || body.aiPlan?.weeklyWorkoutPlan || body.workoutGuidance || [];
+    const nutritionGuidelines = body.plan?.nutritionGuidelines || body.aiPlan?.nutritionGuidelines || body.recommendations || [];
+
+    const normalizedProfileData = {
+      isCompleted: true,
+      profile: {
+        age,
+        gender,
+        heightCm,
+        weightKg,
+        targetWeightKg,
+        activityLevel,
+        fitnessLevel
+      },
+      goal: {
+        primaryGoal,
+        secondaryGoals,
+        desiredOutcome: body.goal?.desiredOutcome || ''
+      },
+      workout: {
+        daysPerWeek,
+        location,
+        equipment
+      },
+      nutrition: {
+        dietaryPreference: body.nutrition?.dietaryPreference || 'NO_RESTRICTION',
+        allergies: body.nutrition?.allergies || [],
+        dislikedFoods: body.nutrition?.dislikedFoods || [],
+        preferredFoods: body.nutrition?.preferredFoods || [],
+        calorieTarget,
+        proteinTarget
+      },
+      aiPlan: {
+        summary,
+        weeklyWorkoutPlan,
+        nutritionGuidelines,
+        dailyTargets: {
+          calories: calorieTarget,
+          protein: proteinTarget,
+          carbs: calculatedTargets.carbTarget,
+          fat: calculatedTargets.fatTarget,
+          water: calculatedTargets.waterTarget
+        }
+      }
+    };
+
+    let updatedProfile = await storage.updateUserProfile(userId, normalizedProfileData as any);
+
+    // Sync NutritionGoal table in DB for fast queries
+    await storage.setNutritionGoal({
+      userId,
+      calorieGoal: calorieTarget,
+      proteinGoal: proteinTarget,
+      carbGoal: calculatedTargets.carbTarget,
+      fatGoal: calculatedTargets.fatTarget,
+      fiberGoal: 25,
+      sugarGoal: 50
+    } as any);
 
     if (updatedProfile && typeof updatedProfile.toObject === 'function') {
       updatedProfile = updatedProfile.toObject();
@@ -63,7 +146,14 @@ router.post("/generate-plan", ensureAuthenticated, async (req, res) => {
       return res.status(400).json({ message: "Prompt is required" });
     }
 
-    const aiPlan = await generatePersonalizedPlan(prompt, context);
+    const existingProfile = await storage.getUserProfile(req.user!.id);
+    const userContext = {
+      ...existingProfile?.profile,
+      goal: existingProfile?.goal,
+      ...context
+    };
+
+    const aiPlan = await generatePersonalizedPlan(prompt, userContext);
     res.json(aiPlan);
   } catch (error) {
     console.error("Error generating AI plan:", error);

@@ -84,15 +84,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         username: user.username
       });
 
-      // Clear all existing queries
+      // Clear ALL existing queries to prevent cross-user data leakage
       queryClient.clear();
       
       // Set the new user data
       queryClient.setQueryData(["/api/user"], user);
       
-      // Invalidate and refetch any necessary queries
+      // Invalidate all user-specific queries so they refetch for the new user
       queryClient.invalidateQueries({ queryKey: ["/api/food-entries"] });
       queryClient.invalidateQueries({ queryKey: ["/api/nutrition-goals"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/user-profile"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
+      // Dashboard queries use dynamic keys like /api/dashboard/123
+      queryClient.invalidateQueries({ predicate: (query) => 
+        typeof query.queryKey[0] === 'string' && query.queryKey[0].startsWith('/api/dashboard/')
+      });
       
       toast({
         title: "Login successful",
@@ -147,10 +153,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await apiRequest("POST", "/api/logout");
     },
     onSuccess: () => {
+      // Clear ALL queries to prevent stale data for next login
       queryClient.clear();
       queryClient.setQueryData(["/api/user"], null);
       queryClient.removeQueries({ queryKey: ["/api/food-entries"] });
       queryClient.removeQueries({ queryKey: ["/api/nutrition-goals"] });
+      queryClient.removeQueries({ queryKey: ["/api/user-profile"] });
+      queryClient.removeQueries({ queryKey: ["/api/stats"] });
+      // Remove all dashboard queries
+      queryClient.removeQueries({ predicate: (query) => 
+        typeof query.queryKey[0] === 'string' && query.queryKey[0].startsWith('/api/dashboard/')
+      });
       toast({
         title: "Logged out",
         description: "You have been logged out successfully",

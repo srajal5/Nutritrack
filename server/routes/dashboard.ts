@@ -2,6 +2,7 @@ import express from 'express';
 import storage from '../storage';
 import { ensureAuthenticated } from '../middleware';
 import { getNutritionRecommendations } from '../openai';
+import { calculateBackendNutritionTargets } from '../nutrition-calculator';
 
 const router = express.Router();
 
@@ -37,35 +38,62 @@ router.get('/:userId', ensureAuthenticated, async (req, res) => {
       { calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0, sugar: 0 }
     );
 
-    // Get user's nutrition goals
-    const userGoals = await storage.getNutritionGoalByUserId(Number(userId));
+    // Get user's nutrition goals & profile
+    let userGoals = await storage.getNutritionGoalByUserId(Number(userId));
+    const userProfile = await storage.getUserProfile(Number(userId));
 
-    const defaultGoals = {
-      calories: 2200,
-      protein: 120,
-      carbs: 275,
-      fat: 73,
-      fiber: 30,
-      water: 2500,
+    // If user profile exists but nutrition goals are missing, compute & persist them
+    if (!userGoals && userProfile) {
+      const calculated = calculateBackendNutritionTargets({
+        age: userProfile.profile?.age,
+        weightKg: userProfile.profile?.weightKg,
+        heightCm: userProfile.profile?.heightCm,
+        gender: userProfile.profile?.gender,
+        activityLevel: userProfile.profile?.activityLevel,
+        goal: userProfile.goal?.primaryGoal
+      });
+
+      userGoals = await storage.setNutritionGoal({
+        userId: Number(userId),
+        calorieGoal: userProfile.nutrition?.calorieTarget || calculated.calorieTarget,
+        proteinGoal: userProfile.nutrition?.proteinTarget || calculated.proteinTarget,
+        carbGoal: calculated.carbTarget,
+        fatGoal: calculated.fatTarget,
+        fiberGoal: 25,
+        sugarGoal: 50
+      } as any);
+    }
+
+    // Default target calculations if user has no profile or goals yet
+    const fallbackTargets = calculateBackendNutritionTargets({
+      age: 30,
+      weightKg: 70,
+      heightCm: 170,
+      gender: 'male',
+      activityLevel: 'MODERATE',
+      goal: 'MAINTAIN_WEIGHT'
+    });
+
+    const waterTarget = userProfile?.profile?.weightKg 
+      ? Math.round(userProfile.profile.weightKg * 35) 
+      : fallbackTargets.waterTarget;
+
+    const goals = {
+      calories: userGoals?.calorieGoal || userProfile?.nutrition?.calorieTarget || fallbackTargets.calorieTarget,
+      protein: userGoals?.proteinGoal || userProfile?.nutrition?.proteinTarget || fallbackTargets.proteinTarget,
+      carbs: userGoals?.carbGoal || fallbackTargets.carbTarget,
+      fat: userGoals?.fatGoal || fallbackTargets.fatTarget,
+      fiber: userGoals?.fiberGoal || 25,
+      water: waterTarget,
     };
-
-    // Map nutrition goal fields to the expected format
-    const goals = userGoals ? {
-      calories: userGoals.calorieGoal,
-      protein: userGoals.proteinGoal,
-      carbs: userGoals.carbGoal,
-      fat: userGoals.fatGoal,
-      fiber: userGoals.fiberGoal || 30,
-      water: 2500, // Default since not in schema
-    } : defaultGoals;
 
     // Calculate progress percentages
     const progress = {
-      calories: Math.round((dailyTotals.calories / goals.calories) * 100),
-      protein: Math.round((dailyTotals.protein / goals.protein) * 100),
-      carbs: Math.round((dailyTotals.carbs / goals.carbs) * 100),
-      fat: Math.round((dailyTotals.fat / goals.fat) * 100),
-      fiber: Math.round((dailyTotals.fiber / goals.fiber) * 100),
+      calories: goals.calories > 0 ? Math.round((dailyTotals.calories / goals.calories) * 100) : 0,
+      protein: goals.protein > 0 ? Math.round((dailyTotals.protein / goals.protein) * 100) : 0,
+      carbs: goals.carbs > 0 ? Math.round((dailyTotals.carbs / goals.carbs) * 100) : 0,
+      fat: goals.fat > 0 ? Math.round((dailyTotals.fat / goals.fat) * 100) : 0,
+      fiber: goals.fiber > 0 ? Math.round((dailyTotals.fiber / goals.fiber) * 100) : 0,
     };
 
     // Get recent entries (last 10 entries)
@@ -93,7 +121,6 @@ router.get('/:userId', ensureAuthenticated, async (req, res) => {
         }
       );
       
-      // Transform AI recommendations to the format expected by the frontend
       recommendations = aiRecommendations.map((rec, index) => ({
         id: index + 1,
         type: rec.category === 'hydration' ? 'hydration' : (rec.category === 'exercise' ? 'exercise' : 'nutrition'),
@@ -113,6 +140,7 @@ router.get('/:userId', ensureAuthenticated, async (req, res) => {
       recentEntries,
       recommendations,
       todaysEntries,
+      profile: userProfile,
     });
   } catch (error) {
     console.error('Dashboard data error:', error);
@@ -121,10 +149,9 @@ router.get('/:userId', ensureAuthenticated, async (req, res) => {
 });
 
 // Generate fallback rule-based recommendations
-function generateFallbackRecommendations(goals: any, progress: any) {
+function generateFallbackRecommendations(_goals: any, progress: any) {
   const recommendations = [];
 
-  // Calorie recommendations
   if (progress.calories < 70) {
     recommendations.push({
       id: 1,
@@ -141,34 +168,12 @@ function generateFallbackRecommendations(goals: any, progress: any) {
     });
   }
 
-  // Protein recommendations
   if (progress.protein < 60) {
     recommendations.push({
       id: 3,
       type: 'nutrition',
       message: 'Your protein intake is low. Consider adding lean protein sources.',
       priority: 'high',
-    });
-  }
-
-  // Water recommendation (mock data)
-  const waterIntake = Math.floor(Math.random() * 1000) + 1000; // Mock water intake
-  if (waterIntake < goals.water * 0.7) {
-    recommendations.push({
-      id: 4,
-      type: 'hydration',
-      message: `You've only consumed ${waterIntake}ml of water today. Aim for ${goals.water}ml.`,
-      priority: 'medium',
-    });
-  }
-
-  // Exercise recommendation
-  if (progress.calories > 80 && progress.calories < 110) {
-    recommendations.push({
-      id: 5,
-      type: 'exercise',
-      message: 'Great job hitting your calorie target! Time for a workout.',
-      priority: 'low',
     });
   }
 

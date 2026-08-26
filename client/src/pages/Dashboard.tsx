@@ -17,40 +17,130 @@ import { motion } from "framer-motion";
 // Lazy load components
 const NutrientBreakdownChart = lazy(() => import("../components/NutrientBreakdownChart"));
 
-// Removed mock data in favor of backend API responses
-
 export default function Dashboard() {
   const { user } = useAuth();
   
   // Fetch initial data to determine loading state and populate UI
   const { data: dashboardData, isLoading: isInitialLoading } = useQuery<any>({
-    queryKey: [`/api/dashboard/${user?.id}`], // Corrected endpoint format to match server route params
+    queryKey: [`/api/dashboard/${user?.id}`],
     queryFn: getQueryFn({ on401: "throw" }),
     enabled: !!user?.id,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 0, // Always refetch to prevent cross-user stale data
   });
 
-  // Map API data or provide safe fallbacks
+  // Map API data — strictly from user-specific DB responses
+  const goals = dashboardData?.goals;
   const nutritionData = {
-    calories: { consumed: dashboardData?.dailyTotals?.calories || 0, target: dashboardData?.goals?.calories || 2200, unit: "kcal" },
-    protein: { consumed: dashboardData?.dailyTotals?.protein || 0, target: dashboardData?.goals?.protein || 120, unit: "g" },
-    carbs: { consumed: dashboardData?.dailyTotals?.carbs || 0, target: dashboardData?.goals?.carbs || 275, unit: "g" },
-    fat: { consumed: dashboardData?.dailyTotals?.fat || 0, target: dashboardData?.goals?.fat || 73, unit: "g" },
-    fiber: { consumed: dashboardData?.dailyTotals?.fiber || 0, target: dashboardData?.goals?.fiber || 30, unit: "g" },
-    water: { consumed: 0, target: dashboardData?.goals?.water || 2500, unit: "ml" } // Water is tracked differently
+    calories: { consumed: dashboardData?.dailyTotals?.calories || 0, target: goals?.calories || 0, unit: "kcal" },
+    protein: { consumed: dashboardData?.dailyTotals?.protein || 0, target: goals?.protein || 0, unit: "g" },
+    carbs: { consumed: dashboardData?.dailyTotals?.carbs || 0, target: goals?.carbs || 0, unit: "g" },
+    fat: { consumed: dashboardData?.dailyTotals?.fat || 0, target: goals?.fat || 0, unit: "g" },
+    fiber: { consumed: dashboardData?.dailyTotals?.fiber || 0, target: goals?.fiber || 0, unit: "g" },
+    water: { consumed: 0, target: goals?.water || 0, unit: "ml" }
   };
 
-  const activeGoals = [
-    { id: 1, title: "Daily Calorie Target", progress: dashboardData?.progress?.calories || 0, target: `${dashboardData?.goals?.calories || 2200} kcal`, icon: Flame },
-    { id: 2, title: "Protein Goal", progress: dashboardData?.progress?.protein || 0, target: `${dashboardData?.goals?.protein || 120} g`, icon: Target },
-    { id: 3, title: "Hydration Target", progress: 0, target: `${dashboardData?.goals?.water || 2500} ml`, icon: Droplet }
-  ];
+  const profile = dashboardData?.profile;
+  const primaryGoal = profile?.goal?.primaryGoal;
+  const workoutDays = profile?.workout?.daysPerWeek || 0;
 
+  // Build goal cards dynamically based on the user's ACTUAL selected goal
+  let dynamicGoals: any[] = [];
+
+  if (primaryGoal === 'LOSE_WEIGHT') {
+    const currentWeight = profile?.profile?.weightKg || 0;
+    const targetWeight = profile?.profile?.targetWeightKg || currentWeight;
+    let weightProgress = 0;
+    if (currentWeight && targetWeight && currentWeight !== targetWeight) {
+      const startWeight = profile?.profile?.startWeightKg || (currentWeight > targetWeight ? currentWeight + 5 : currentWeight - 5);
+      const totalDiff = Math.abs(startWeight - targetWeight);
+      const currentDiff = Math.abs(currentWeight - targetWeight);
+      weightProgress = totalDiff > 0 ? Math.min(100, Math.max(0, Math.round(((totalDiff - currentDiff) / totalDiff) * 100))) : 50;
+    }
+    dynamicGoals.push({
+      id: 1,
+      title: "Weight Loss Plan",
+      progress: weightProgress,
+      target: `${targetWeight} kg`,
+      subtitle: `Current: ${currentWeight} kg | Target: ${targetWeight} kg`,
+      icon: Target
+    });
+  } else if (primaryGoal === 'GAIN_WEIGHT') {
+    const currentWeight = profile?.profile?.weightKg || 0;
+    const targetWeight = profile?.profile?.targetWeightKg || currentWeight;
+    let weightProgress = 0;
+    if (currentWeight && targetWeight && currentWeight !== targetWeight) {
+      const startWeight = profile?.profile?.startWeightKg || currentWeight - 5;
+      const totalDiff = Math.abs(targetWeight - startWeight);
+      const currentDiff = Math.abs(targetWeight - currentWeight);
+      weightProgress = totalDiff > 0 ? Math.min(100, Math.max(0, Math.round(((totalDiff - currentDiff) / totalDiff) * 100))) : 50;
+    }
+    dynamicGoals.push({
+      id: 1,
+      title: "Weight Gain Plan",
+      progress: weightProgress,
+      target: `${targetWeight} kg`,
+      subtitle: `Current: ${currentWeight} kg | Target: ${targetWeight} kg`,
+      icon: Target
+    });
+  } else if (primaryGoal === 'BUILD_MUSCLE') {
+    dynamicGoals.push({
+      id: 1,
+      title: "Muscle Building Plan",
+      progress: Math.min(100, dashboardData?.progress?.protein || 0),
+      target: `${goals?.protein || 0}g Protein`,
+      subtitle: workoutDays ? `Workout Goal: ${workoutDays} days/week` : `Target: ${goals?.protein || 0}g Protein`,
+      icon: Target
+    });
+  } else if (primaryGoal === 'IMPROVE_FITNESS' || primaryGoal === 'IMPROVE_STRENGTH') {
+    dynamicGoals.push({
+      id: 1,
+      title: primaryGoal === 'IMPROVE_FITNESS' ? "Fitness Improvement Plan" : "Strength Improvement Plan",
+      progress: Math.min(100, dashboardData?.progress?.calories || 0),
+      target: `${goals?.calories || 0} kcal`,
+      subtitle: workoutDays ? `Workout Goal: ${workoutDays} days/week` : `Target: ${goals?.calories || 0} kcal`,
+      icon: Target
+    });
+  } else if (primaryGoal) {
+    const goalLabel = primaryGoal.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase());
+    dynamicGoals.push({
+      id: 1,
+      title: `${goalLabel} Plan`,
+      progress: Math.min(100, dashboardData?.progress?.calories || 0),
+      target: `${goals?.calories || 0} kcal`,
+      subtitle: workoutDays ? `Workout Goal: ${workoutDays} days/week` : `Target: ${goals?.calories || 0} kcal`,
+      icon: Flame
+    });
+  } else {
+    dynamicGoals.push({
+      id: 1,
+      title: "Daily Calorie Target",
+      progress: Math.min(100, dashboardData?.progress?.calories || 0),
+      target: goals?.calories ? `${goals.calories} kcal` : "Not set",
+      subtitle: goals?.calories ? `Goal: ${goals.calories} kcal` : undefined,
+      icon: Flame
+    });
+  }
+
+  dynamicGoals.push({
+    id: 2,
+    title: "Protein Target",
+    progress: Math.min(100, dashboardData?.progress?.protein || 0),
+    target: goals?.protein ? `${goals.protein} g` : "Not set",
+    subtitle: goals?.protein ? `Target: ${goals.protein} g` : undefined,
+    icon: TrendingUp
+  });
+  dynamicGoals.push({
+    id: 3,
+    title: "Hydration Target",
+    progress: 0,
+    target: goals?.water ? `${goals.water} ml` : "Not set",
+    subtitle: goals?.water ? `Target: ${goals.water} ml` : undefined,
+    icon: Droplet
+  });
+
+  const activeGoals = dynamicGoals;
   const recentEntries = dashboardData?.recentEntries || [];
   const aiRecommendations = dashboardData?.recommendations || [];
-
-
-
 
   // Animation variants
   const containerVariants = {
@@ -84,8 +174,6 @@ export default function Dashboard() {
   
   return (
     <div className="min-h-screen bg-background">
-      
-      
       <div className="relative z-20">
         {/* Main Content */}
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-24 md:pb-8">
@@ -127,8 +215,8 @@ export default function Dashboard() {
                         </div>
                       </div>
                       <progress 
-                        className={`progress w-full mt-3 ${getProgressColor((nutritionData.calories.consumed / nutritionData.calories.target) * 100)}`}
-                        value={(nutritionData.calories.consumed / nutritionData.calories.target) * 100}
+                        className={`progress w-full mt-3 ${getProgressColor((nutritionData.calories.consumed / (nutritionData.calories.target || 1)) * 100)}`}
+                        value={Math.min(100, (nutritionData.calories.consumed / (nutritionData.calories.target || 1)) * 100)}
                         max="100"
                       />
                       <p className="text-xs text-muted-foreground mt-2">{Math.max(0, nutritionData.calories.target - nutritionData.calories.consumed)} kcal remaining</p>
@@ -152,15 +240,15 @@ export default function Dashboard() {
                         </div>
                       </div>
                       <progress 
-                        className={`progress w-full mt-3 ${getProgressColor((nutritionData.protein.consumed / nutritionData.protein.target) * 100)}`}
-                        value={(nutritionData.protein.consumed / nutritionData.protein.target) * 100}
+                        className={`progress w-full mt-3 ${getProgressColor((nutritionData.protein.consumed / (nutritionData.protein.target || 1)) * 100)}`}
+                        value={Math.min(100, (nutritionData.protein.consumed / (nutritionData.protein.target || 1)) * 100)}
                         max="100"
                       />
                       <p className="text-xs text-muted-foreground mt-2">{Math.max(0, nutritionData.protein.target - nutritionData.protein.consumed)}g remaining</p>
                     </div>
                   </div>
 
-                  <div className="card bg-card text-card-foreground shadow-sm hover:shadow-md transition-all duration-300 border border-border">
+                  <div className="card min-w-0 bg-card text-card-foreground shadow-sm hover:shadow-md transition-all duration-300 border border-border">
                     <div className="card-body p-5">
                       <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-2">
@@ -177,8 +265,8 @@ export default function Dashboard() {
                         </div>
                       </div>
                       <progress 
-                        className={`progress w-full mt-3 ${getProgressColor((nutritionData.water.consumed / nutritionData.water.target) * 100)}`}
-                        value={(nutritionData.water.consumed / nutritionData.water.target) * 100}
+                        className={`progress w-full mt-3 ${getProgressColor((nutritionData.water.consumed / (nutritionData.water.target || 1)) * 100)}`}
+                        value={Math.min(100, (nutritionData.water.consumed / (nutritionData.water.target || 1)) * 100)}
                         max="100"
                       />
                       <p className="text-xs text-muted-foreground mt-2">{Math.max(0, nutritionData.water.target - nutritionData.water.consumed)}ml remaining</p>
@@ -239,7 +327,10 @@ export default function Dashboard() {
                                   <IconComponent className="h-4 w-4 text-primary" />
                                   <span className="font-medium text-sm">{goal.title}</span>
                                 </div>
-                                <span className="text-sm font-medium">{goal.progress}%</span>
+                                <div className="text-right">
+                                  {goal.subtitle && <div className="text-xs text-muted-foreground">{goal.subtitle}</div>}
+                                  <span className="text-sm font-medium">{goal.progress}%</span>
+                                </div>
                               </div>
                               <progress 
                                 className={`progress w-full h-2 ${getProgressColor(goal.progress)}`}
@@ -341,7 +432,7 @@ export default function Dashboard() {
             </Suspense>
           )}
         </main>
-       </div>
-     </div>
-   );
- }
+      </div>
+    </div>
+  );
+}

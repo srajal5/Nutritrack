@@ -106,7 +106,9 @@ export default function Tracker() {
       queryClient.invalidateQueries({ queryKey: ['/api/food-entries/weekly'] });
       queryClient.invalidateQueries({ queryKey: ['/api/food-entries/recent'] });
       queryClient.invalidateQueries({ queryKey: ['/api/stats'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/dashboard'] });
+      queryClient.invalidateQueries({ predicate: (query) => 
+        typeof query.queryKey[0] === 'string' && query.queryKey[0].startsWith('/api/dashboard')
+      });
     },
     onError: () => {
       toast({

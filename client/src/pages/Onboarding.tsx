@@ -9,8 +9,9 @@ import { Label } from "../components/ui/label";
 import { Textarea } from "../components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "../components/ui/card";
 import { motion } from "framer-motion";
-import { Target, Activity, Dumbbell, Utensils, CheckCircle, ArrowRight, ArrowLeft, Loader2, Wand2 } from "lucide-react";
+import { Target, Activity, Dumbbell, Utensils, CheckCircle, ArrowRight, ArrowLeft, Loader2, Wand2, MessageSquare } from "lucide-react";
 import { useToast } from "../hooks/use-toast";
+import { calculateNutritionTargets } from "../lib/nutrition-calculator";
 
 const GOALS = [
   { id: "LOSE_WEIGHT", label: "Lose Weight", icon: <Target className="w-6 h-6" /> },
@@ -37,6 +38,8 @@ export default function Onboarding() {
   const [step, setStep] = useState(1);
   const [isAiMode, setIsAiMode] = useState(false);
   const [aiPrompt, setAiPrompt] = useState("");
+  const [followUpQuestion, setFollowUpQuestion] = useState<string | null>(null);
+  const [conversationContext, setConversationContext] = useState<string>("");
   
   const [profileData, setProfileData] = useState({
     goal: { primaryGoal: "" },
@@ -77,6 +80,10 @@ export default function Onboarding() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/user-profile"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/nutrition-goals"] });
+      queryClient.invalidateQueries({ predicate: (query) => 
+        typeof query.queryKey[0] === 'string' && query.queryKey[0].startsWith('/api/dashboard/')
+      });
       toast({
         title: "Profile saved",
         description: "Your personalized plan has been set up!",
@@ -94,25 +101,31 @@ export default function Onboarding() {
 
   const generatePlanMutation = useMutation({
     mutationFn: async (prompt: string) => {
-      const res = await apiRequest("POST", "/api/user-profile/generate-plan", { prompt });
+      const fullPrompt = conversationContext 
+        ? `${conversationContext}\nUser Response: ${prompt}` 
+        : prompt;
+
+      const res = await apiRequest("POST", "/api/user-profile/generate-plan", { prompt: fullPrompt });
       return res.json();
     },
     onSuccess: (data) => {
-      if (!data.isComplete) {
+      if (data.isComplete === false) {
+        setFollowUpQuestion(data.followUpQuestion || "Please provide your age, weight, and height so I can complete your plan.");
+        setConversationContext(prev => `${prev}\nUser: ${aiPrompt}\nAI Question: ${data.followUpQuestion}`);
+        setAiPrompt("");
         toast({
-          title: "Need more information",
-          description: data.followUpQuestion || "Please provide more details.",
+          title: "Follow-up question",
+          description: data.followUpQuestion || "Please answer the AI coach's question to finish your plan.",
         });
-        // Add follow-up logic if needed, or just let user answer
       } else {
-        // Save the generated plan
+        setFollowUpQuestion(null);
         saveMutation.mutate(data);
       }
     },
     onError: () => {
       toast({
         title: "Error",
-        description: "Failed to generate AI plan.",
+        description: "Failed to generate AI plan. Try manual setup.",
         variant: "destructive"
       });
     }
@@ -122,20 +135,32 @@ export default function Onboarding() {
   const prevStep = () => setStep(prev => prev - 1);
 
   const handleManualSave = () => {
-    // Generate some default targets if manual
+    const parsedProfile = {
+      age: Number(profileData.profile.age) || 30,
+      heightCm: Number(profileData.profile.heightCm) || 170,
+      weightKg: Number(profileData.profile.weightKg) || 70,
+      targetWeightKg: Number(profileData.profile.targetWeightKg) || 70,
+      goal: profileData.goal.primaryGoal,
+      gender: 'male',
+      activityLevel: profileData.profile.activityLevel || 'MODERATE',
+    };
+    
+    const calculatedTargets = calculateNutritionTargets(parsedProfile);
+
     const dataToSave = {
       ...profileData,
       profile: {
         ...profileData.profile,
-        age: Number(profileData.profile.age),
-        heightCm: Number(profileData.profile.heightCm),
-        weightKg: Number(profileData.profile.weightKg),
-        targetWeightKg: Number(profileData.profile.targetWeightKg),
+        age: parsedProfile.age,
+        heightCm: parsedProfile.heightCm,
+        weightKg: parsedProfile.weightKg,
+        targetWeightKg: parsedProfile.targetWeightKg,
+        activityLevel: parsedProfile.activityLevel,
       },
       nutrition: {
         ...profileData.nutrition,
-        calorieTarget: 2000,
-        proteinTarget: 150
+        calorieTarget: calculatedTargets.calorieTarget,
+        proteinTarget: calculatedTargets.proteinTarget,
       }
     };
     saveMutation.mutate(dataToSave);
@@ -312,10 +337,19 @@ export default function Onboarding() {
                   Tell me what you want to achieve in natural language.
                 </CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="space-y-4">
+                {followUpQuestion && (
+                  <div className="p-3 bg-primary/10 border border-primary/20 rounded-lg flex items-start gap-3 text-sm text-foreground">
+                    <MessageSquare className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-semibold text-primary">AI Coach Question:</p>
+                      <p>{followUpQuestion}</p>
+                    </div>
+                  </div>
+                )}
                 <Textarea
                   className="w-full h-32 resize-none"
-                  placeholder="E.g., I want to lose 5kg in 3 months, work out 5 days a week at home, and eat more protein."
+                  placeholder={followUpQuestion ? "Reply with your details (e.g. Age: 25, Height: 180cm, Weight: 75kg)..." : "E.g., I want to lose 5kg in 3 months, work out 5 days a week at home, and eat more protein."}
                   value={aiPrompt}
                   onChange={(e) => setAiPrompt(e.target.value)}
                 />
@@ -326,12 +360,12 @@ export default function Onboarding() {
                 </Button>
                 <Button 
                   onClick={() => generatePlanMutation.mutate(aiPrompt)}
-                  disabled={!aiPrompt || generatePlanMutation.isPending}
+                  disabled={!aiPrompt || generatePlanMutation.isPending || saveMutation.isPending}
                 >
-                  {generatePlanMutation.isPending ? (
-                    <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Generating...</>
+                  {generatePlanMutation.isPending || saveMutation.isPending ? (
+                    <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Creating Your Plan...</>
                   ) : (
-                    "Generate My Plan"
+                    followUpQuestion ? "Send Response" : "Generate My Plan"
                   )}
                 </Button>
               </CardFooter>

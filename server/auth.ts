@@ -32,6 +32,9 @@ export function setupAuth(app: Express) {
   app.use(cors(corsOptions));
   app.options('*', cors(corsOptions)); // Enable pre-flight for all routes
 
+  // Trust first proxy for Vercel/production secure cookies
+  app.set('trust proxy', 1);
+
   // Configure session store with updated settings
   app.use(session({
     secret: process.env.SESSION_SECRET || 'your-secret-key',

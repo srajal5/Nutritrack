@@ -47,6 +47,66 @@ function extractContent(response: any): string | null {
 }
 
 /**
+ * Safely parse JSON from AI model outputs.
+ * Handles raw JSON, markdown code blocks (```json ... ```), bracketed arrays, braced objects, and conversational text.
+ */
+function safeJsonParse<T = any>(content: string): T {
+  if (!content || typeof content !== 'string') {
+    throw new Error('Empty or invalid response from AI model');
+  }
+
+  const trimmed = content.trim();
+
+  // 1. Direct JSON parse
+  try {
+    return JSON.parse(trimmed);
+  } catch {}
+
+  // 2. Extract from markdown code block ```json ... ``` or ``` ... ```
+  const codeBlockMatch = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  if (codeBlockMatch && codeBlockMatch[1]) {
+    try {
+      return JSON.parse(codeBlockMatch[1].trim());
+    } catch {}
+  }
+
+  // 3. Extract bracketed array if present
+  const firstBracket = trimmed.indexOf('[');
+  const lastBracket = trimmed.lastIndexOf(']');
+  if (firstBracket !== -1 && lastBracket > firstBracket) {
+    try {
+      return JSON.parse(trimmed.substring(firstBracket, lastBracket + 1));
+    } catch {}
+  }
+
+  // 4. Extract braced object if present
+  const firstBrace = trimmed.indexOf('{');
+  const lastBrace = trimmed.lastIndexOf('}');
+  if (firstBrace !== -1 && lastBrace > firstBrace) {
+    try {
+      return JSON.parse(trimmed.substring(firstBrace, lastBrace + 1));
+    } catch {}
+  }
+
+  // 5. Fallback regex patterns
+  const arrayMatch = trimmed.match(/\[[\s\S]*\]/);
+  if (arrayMatch) {
+    try {
+      return JSON.parse(arrayMatch[0]);
+    } catch {}
+  }
+
+  const objectMatch = trimmed.match(/\{[\s\S]*\}/);
+  if (objectMatch) {
+    try {
+      return JSON.parse(objectMatch[0]);
+    } catch {}
+  }
+
+  throw new Error('Could not parse JSON from AI response');
+}
+
+/**
  * Call the OpenRouter API with automatic fallback to a secondary model.
  */
 async function callWithFallback(params: any): Promise<string> {
@@ -186,26 +246,7 @@ export async function analyzeFoodEntry(
       return getFoodNutrientsFallback(foodName);
     }
 
-    // Try to parse JSON from the response (model may wrap it in markdown)
-    let result: any;
-    try {
-      // Try direct parse first
-      result = JSON.parse(content);
-    } catch {
-      // Try extracting JSON from markdown code blocks
-      const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)```/);
-      if (jsonMatch && jsonMatch[1]) {
-        result = JSON.parse(jsonMatch[1].trim());
-      } else {
-        // Try finding a JSON object in the response
-        const objectMatch = content.match(/\{[\s\S]*\}/);
-        if (objectMatch && objectMatch[0]) {
-          result = JSON.parse(objectMatch[0]);
-        } else {
-          throw new Error('Could not parse JSON from AI response');
-        }
-      }
-    }
+    const result = safeJsonParse(content);
 
     return {
       calories: Number(result.calories) || 0,
@@ -215,9 +256,9 @@ export async function analyzeFoodEntry(
       fiber: Number(result.fiber) || 0,
       sugar: Number(result.sugar) || 0,
       analysis: result.analysis || "Analysis provided by AI",
-      ingredients: result.ingredients || [],
-      healthBenefits: result.healthBenefits || [],
-      possibleAllergens: result.possibleAllergens || [],
+      ingredients: Array.isArray(result.ingredients) ? result.ingredients : [],
+      healthBenefits: Array.isArray(result.healthBenefits) ? result.healthBenefits : [],
+      possibleAllergens: Array.isArray(result.possibleAllergens) ? result.possibleAllergens : [],
     };
   } catch (error) {
     console.warn("AI analysis failed, using fallback values:", error);
@@ -524,23 +565,27 @@ export async function getNutritionRecommendations(
       messages: [{ role: "user", content: prompt }],
     });
 
-    let result: any;
-    try {
-      result = JSON.parse(content);
-    } catch {
-      const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)```/);
-      if (jsonMatch) {
-        result = JSON.parse(jsonMatch[1].trim());
-      } else {
-        const objectMatch = content.match(/\{[\s\S]*\}/);
-        if (objectMatch) {
-          result = JSON.parse(objectMatch[0]);
-        } else {
-          throw new Error('Could not parse JSON from AI response');
-        }
-      }
+    const parsed = safeJsonParse(content);
+    let list: any[] = [];
+    if (Array.isArray(parsed)) {
+      list = parsed;
+    } else if (parsed && Array.isArray(parsed.recommendations)) {
+      list = parsed.recommendations;
+    } else if (parsed && Array.isArray(parsed.data)) {
+      list = parsed.data;
     }
-    return result.recommendations || [];
+
+    if (list.length > 0) {
+      return list.map(item => ({
+        title: String(item.title || "Nutrition Advice"),
+        description: String(item.description || "Improve your daily nutrition balance."),
+        actionItems: Array.isArray(item.actionItems) ? item.actionItems.map(String) : ["Track meals consistently"],
+        priority: (['high', 'medium', 'low'].includes(item.priority) ? item.priority : 'medium') as 'high' | 'medium' | 'low',
+        category: String(item.category || 'nutrition')
+      }));
+    }
+
+    throw new Error('No recommendations array found in AI response');
   } catch (error) {
     console.error("Error getting nutrition recommendations:", error);
 
@@ -652,25 +697,10 @@ export async function getAIStatsInsights(
       messages: [{ role: "user", content: prompt }],
     });
 
-    let result: any;
-    try {
-      result = JSON.parse(content);
-    } catch {
-      const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)```/);
-      if (jsonMatch) {
-        result = JSON.parse(jsonMatch[1].trim());
-      } else {
-        const objectMatch = content.match(/\{[\s\S]*\}/);
-        if (objectMatch) {
-          result = JSON.parse(objectMatch[0]);
-        } else {
-          throw new Error('Could not parse JSON from AI response');
-        }
-      }
-    }
+    const result = safeJsonParse(content);
     return {
       insights: result.insights || "Keep tracking your meals to see more insights!",
-      achievements: result.achievements || []
+      achievements: Array.isArray(result.achievements) ? result.achievements : []
     };
   } catch (error) {
     console.error("Error getting AI stats insights:", error);
@@ -740,23 +770,7 @@ Return the response STRICTLY as a JSON object matching this schema:
       temperature: 0.2, // Low temp for structured data extraction
     });
 
-    let result: any;
-    try {
-      result = JSON.parse(content);
-    } catch {
-      const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)```/);
-      if (jsonMatch) {
-        result = JSON.parse(jsonMatch[1].trim());
-      } else {
-        const objectMatch = content.match(/\{[\s\S]*\}/);
-        if (objectMatch) {
-          result = JSON.parse(objectMatch[0]);
-        } else {
-          throw new Error('Could not parse JSON from AI plan response');
-        }
-      }
-    }
-    return result;
+    return safeJsonParse(content);
   } catch (error) {
     console.error("Error generating personalized plan:", error);
     throw error;

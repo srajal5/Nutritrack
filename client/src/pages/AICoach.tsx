@@ -86,6 +86,12 @@ export default function AICoach() {
   const [activeTab, setActiveTab] = useState('chat');
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
+  // Fetch user's profile for personalized AI context
+  const { data: userProfile } = useQuery<any>({
+    queryKey: ['/api/user-profile'],
+    enabled: !!user?.id,
+  });
+
   // Fetch user's nutrition data for personalized recommendations
   const { data: dailySummary } = useQuery<DailySummary>({
     queryKey: ['/api/food-entries/daily'],
@@ -201,15 +207,25 @@ export default function AICoach() {
   // Enhanced AI chat mutation
   const chatMutation = useMutation({
     mutationFn: async (message: string) => {
+      // Build context from the user's actual profile
+      const profileGoal = userProfile?.goal?.primaryGoal;
+      const goalLabel = profileGoal 
+        ? profileGoal.replace(/_/g, ' ').toLowerCase() 
+        : 'general health';
+      
       const response = await apiRequest('POST', '/api/chat', {
         message,
         conversationId,
         userContext: {
-          fitnessLevel: 'intermediate', // This could be fetched from user profile
-          goals: ['build muscle', 'improve nutrition'],
-          dietaryRestrictions: [],
-          availableTime: '1 hour daily',
-          equipment: ['dumbbells', 'resistance bands']
+          fitnessLevel: userProfile?.profile?.fitnessLevel || userProfile?.profile?.activityLevel?.toLowerCase() || 'moderate',
+          goals: [goalLabel],
+          dietaryRestrictions: userProfile?.nutrition?.allergies || [],
+          dietaryPreference: userProfile?.nutrition?.dietaryPreference || 'no restriction',
+          availableTime: userProfile?.workout?.daysPerWeek 
+            ? `${userProfile.workout.daysPerWeek} days per week` 
+            : 'flexible',
+          equipment: userProfile?.workout?.equipment || [],
+          workoutLocation: userProfile?.workout?.location || 'home',
         }
       });
       return response.json();

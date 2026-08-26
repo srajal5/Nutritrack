@@ -9,6 +9,16 @@ import {
   LogOut
 } from "lucide-react";
 import { ThemeToggle } from "./ThemeToggle";
+import { Button } from "./ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
+import { 
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "./ui/dropdown-menu";
 
 export default function Navbar() {
   const [location] = useLocation();
@@ -57,41 +67,47 @@ export default function Navbar() {
         {/* Right side actions */}
         <div className="flex items-center gap-2">
           <ThemeToggle />
-          <div className="dropdown dropdown-end">
-            <div tabIndex={0} role="button" className="btn btn-ghost btn-circle avatar border border-primary/20 bg-primary/5">
-              <div className="w-10 rounded-full">
-                <img alt="User avatar" src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${user.username}`} />
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="relative h-10 w-10 rounded-full border border-primary/20 bg-primary/5">
+                <Avatar className="h-9 w-9">
+                  <AvatarImage src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${user.username}`} alt="Avatar" />
+                  <AvatarFallback>{user.username?.substring(0, 2).toUpperCase()}</AvatarFallback>
+                </Avatar>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="w-56" align="end" forceMount>
+              <DropdownMenuLabel className="font-normal">
+                <div className="flex flex-col space-y-1">
+                  <p className="text-sm font-medium leading-none truncate">{user.username}</p>
+                </div>
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <div className="md:hidden">
+                <DropdownMenuItem asChild>
+                  <Link href="/dashboard" className="cursor-pointer"><LayoutDashboard className="mr-2 h-4 w-4" /> Dashboard</Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/tracker" className="cursor-pointer"><PlusCircle className="mr-2 h-4 w-4" /> Log Food</Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/stats" className="cursor-pointer"><BarChart3 className="mr-2 h-4 w-4" /> Stats</Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/ai-coach" className="cursor-pointer"><BrainCircuit className="mr-2 h-4 w-4" /> AI Coach</Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
               </div>
-            </div>
-            <ul tabIndex={0} className="mt-3 z-[1] p-2 shadow-lg menu menu-sm dropdown-content bg-card border border-border rounded-box w-52 text-foreground">
-              <li className="menu-title px-4 py-2">
-                <span className="text-foreground font-medium truncate block w-full">{user.username}</span>
-              </li>
-              <div className="divider my-0"></div>
-              <li className="md:hidden">
-                <Link href="/dashboard"><a><LayoutDashboard className="w-4 h-4" /> Dashboard</a></Link>
-              </li>
-              <li className="md:hidden">
-                <Link href="/tracker"><a><PlusCircle className="w-4 h-4" /> Log Food</a></Link>
-              </li>
-              <li className="md:hidden">
-                <Link href="/stats"><a><BarChart3 className="w-4 h-4" /> Stats</a></Link>
-              </li>
-              <li className="md:hidden">
-                <Link href="/ai-coach"><a><BrainCircuit className="w-4 h-4" /> AI Coach</a></Link>
-              </li>
-              <li>
-                <Link href="/profile">
-                  <a><UserCircle className="w-4 h-4" /> Profile</a>
+              <DropdownMenuItem asChild>
+                <Link href="/profile" className="cursor-pointer">
+                  <UserCircle className="mr-2 h-4 w-4" /> Profile
                 </Link>
-              </li>
-              <li>
-                <a onClick={() => logoutMutation.mutate()} className="text-destructive">
-                  <LogOut className="w-4 h-4" /> Logout
-                </a>
-              </li>
-            </ul>
-          </div>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => logoutMutation.mutate()} className="text-destructive cursor-pointer">
+                <LogOut className="mr-2 h-4 w-4" /> Logout
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
     </div>
