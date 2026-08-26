@@ -6,7 +6,9 @@ import storage from "./storage";
 import type { UserDocument } from "./storage";
 import bcrypt from "bcrypt";
 import MongoStore from "connect-mongo";
+import mongoose from "mongoose";
 import cors from "cors";
+import config from "./config";
 
 declare global {
   namespace Express {
@@ -14,77 +16,139 @@ declare global {
   }
 }
 
-export function setupAuth(app: Express) {
-  // Configure CORS with specific options
-  const corsOptions = {
-    origin: process.env.NODE_ENV === 'production' 
-      ? [/^https:\/\/.+\.vercel\.app$/, 'https://vercel.app']
-      : ['http://localhost:5173', 'http://127.0.0.1:5173', 'http://localhost:3001', 'http://127.0.0.1:3001'],
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'Cookie', 'X-Requested-With'],
-    exposedHeaders: ['Set-Cookie'],
-    maxAge: 86400, // 24 hours
-    preflightContinue: false,
-    optionsSuccessStatus: 204
-  };
-  
-  app.use(cors(corsOptions));
-  app.options('*', cors(corsOptions)); // Enable pre-flight for all routes
+const isProduction = config.env === 'production';
 
-  // Trust first proxy for Vercel/production secure cookies
-  app.set('trust proxy', 1);
+/**
+ * In production the session secret must come from the environment — a hard-coded
+ * fallback would let anyone forge a session cookie.
+ */
+function resolveSessionSecret(): string {
+  const secret = process.env.SESSION_SECRET;
+  if (secret && secret.length > 0) return secret;
+  if (isProduction) {
+    throw new Error(
+      'SESSION_SECRET must be set in production. Add it to your environment variables.'
+    );
+  }
+  console.warn('[auth] SESSION_SECRET is not set — using an insecure development fallback.');
+  return 'dev-only-insecure-session-secret';
+}
 
-  // Configure session store with updated settings
-  app.use(session({
-    secret: process.env.SESSION_SECRET || 'your-secret-key',
-    resave: true,
-    saveUninitialized: false,
-    rolling: true,
-    store: MongoStore.create({
-      mongoUrl: process.env.MONGODB_URI || 'mongodb://localhost:27017/foodfiness',
+/**
+ * Reuse the connection mongoose already opened instead of letting connect-mongo
+ * dial a second pool. On serverless that halves the connections per cold start.
+ */
+function createSessionStore() {
+  if (mongoose.connection.readyState === 1) {
+    return MongoStore.create({
+      client: mongoose.connection.getClient() as any,
       collectionName: 'sessions',
       ttl: 24 * 60 * 60,
       autoRemove: 'native',
-      touchAfter: 24 * 3600
-    }),
+      touchAfter: 24 * 3600,
+    });
+  }
+
+  const mongoUrl = process.env.MONGODB_URI;
+  if (!mongoUrl) {
+    throw new Error('MONGODB_URI must be set to persist sessions.');
+  }
+  return MongoStore.create({
+    mongoUrl,
+    collectionName: 'sessions',
+    ttl: 24 * 60 * 60,
+    autoRemove: 'native',
+    touchAfter: 24 * 3600,
+  });
+}
+
+function buildCorsOptions() {
+  const allowed = config.allowedOrigins;
+  return {
+    origin(origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) {
+      // Same-origin requests and non-browser clients send no Origin header.
+      if (!origin) return callback(null, true);
+      if (allowed.includes(origin)) return callback(null, true);
+      if (isProduction && /^https:\/\/[^/]+\.vercel\.app$/.test(origin)) {
+        return callback(null, true);
+      }
+      return callback(null, false);
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+    exposedHeaders: ['Set-Cookie'],
+    maxAge: 86400,
+    optionsSuccessStatus: 204,
+  };
+}
+
+/**
+ * Look the user up by the trimmed name first — pasted credentials routinely
+ * carry stray whitespace. Some accounts were created before registration
+ * trimmed, so their stored username really does contain the spaces; fall back
+ * to the raw value rather than locking those people out.
+ */
+async function findUserForLogin(rawUsername: string) {
+  const trimmed = rawUsername.trim();
+  const user = await storage.getUserByUsername(trimmed);
+  if (user || trimmed === rawUsername) return user;
+  return storage.getUserByUsername(rawUsername);
+}
+
+/** Strip password and mongo internals before sending a user to the client. */
+function toPublicUser(user: any) {
+  const plain = typeof user?.toObject === 'function' ? user.toObject() : { ...user };
+  const { password, _id, __v, ...rest } = plain;
+  return rest;
+}
+
+export function setupAuth(app: Express) {
+  const corsOptions = buildCorsOptions();
+  app.use(cors(corsOptions));
+  app.options('*', cors(corsOptions));
+
+  // Required for secure cookies behind Vercel's proxy.
+  app.set('trust proxy', 1);
+
+  app.use(session({
+    secret: resolveSessionSecret(),
+    resave: false,
+    saveUninitialized: false,
+    rolling: true,
+    store: createSessionStore(),
     cookie: {
-      secure: process.env.NODE_ENV === 'production',
+      secure: isProduction,
       maxAge: 24 * 60 * 60 * 1000,
       sameSite: 'lax',
       httpOnly: true,
-      path: '/'
+      path: '/',
     },
-    name: 'foodfitness.sid'
+    name: 'foodfitness.sid',
   }));
 
   app.use(passport.initialize());
   app.use(passport.session());
 
-
-
-  // Updated LocalStrategy with better error handling
   passport.use(
     new LocalStrategy(
       {
         usernameField: 'username',
         passwordField: 'password',
-        session: true
+        session: true,
       },
       async (username, password, done) => {
         try {
-          const user = await storage.getUserByUsername(username);
+          const user = await findUserForLogin(String(username));
           if (!user) {
             return done(null, false, { message: 'Invalid username or password.' });
           }
 
           const isValid = await bcrypt.compare(password, user.password);
-          
           if (!isValid) {
             return done(null, false, { message: 'Invalid username or password.' });
           }
 
-          console.log('Login successful for:', username);
           return done(null, user);
         } catch (err) {
           console.error('Error in LocalStrategy:', err);
@@ -111,205 +175,173 @@ export function setupAuth(app: Express) {
     }
   });
 
-  const registerHandler = async (req: any, res: any, _next: (err?: unknown) => void) => {
+  /**
+   * Regenerate the session before establishing the login so a pre-auth session
+   * id cannot be reused afterwards (session fixation). Passport 0.6+ no longer
+   * does this for us.
+   */
+  function establishSession(req: any, user: UserDocument): Promise<void> {
+    return new Promise((resolve, reject) => {
+      req.session.regenerate((regenErr: unknown) => {
+        if (regenErr) return reject(regenErr);
+        req.login(user, (loginErr: unknown) => {
+          if (loginErr) return reject(loginErr);
+          req.session.save((saveErr: unknown) => {
+            if (saveErr) return reject(saveErr);
+            resolve();
+          });
+        });
+      });
+    });
+  }
+
+  const registerHandler = async (req: any, res: any) => {
     try {
-      const { username, password, email } = req.body;
-      
+      const username = typeof req.body?.username === 'string' ? req.body.username.trim() : '';
+      const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : '';
+      const password = typeof req.body?.password === 'string' ? req.body.password : '';
+
       if (!username || !password || !email) {
-        return res.status(400).json({ message: "Username, password, and email are required" });
+        return res.status(400).json({
+          message: "Username, password, and email are required",
+          code: 'MISSING_FIELDS',
+        });
+      }
+      if (username.length < 3) {
+        return res.status(400).json({
+          message: "Username must be at least 3 characters",
+          code: 'INVALID_USERNAME',
+        });
+      }
+      if (password.length < 6) {
+        return res.status(400).json({
+          message: "Password must be at least 6 characters",
+          code: 'WEAK_PASSWORD',
+        });
       }
 
-      const existingUser = await storage.getUserByUsername(username);
-      if (existingUser) {
-        return res.status(400).json({ message: "Username already exists" });
+      if (await storage.getUserByUsername(username)) {
+        return res.status(409).json({ message: "Username already exists", code: 'USERNAME_TAKEN' });
+      }
+      if (await storage.getUserByEmail(email)) {
+        return res.status(409).json({ message: "Email already registered", code: 'EMAIL_TAKEN' });
       }
 
       const hashedPassword = await bcrypt.hash(password, 10);
-      
-      // Generate a unique local ID for non-Firebase users
+
+      // Non-Firebase accounts still need a unique firebaseId — the index is
+      // sparse-unique, so a shared null would collide.
       const localId = `local_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-      
+
       const user = await storage.createUser({
         username,
         password: hashedPassword,
         email,
-        firebaseId: localId, // Set a unique local ID instead of null
+        firebaseId: localId,
         createdAt: new Date(),
-        updatedAt: new Date()
+        updatedAt: new Date(),
       });
 
-      req.login(user, (err: unknown) => {
-        if (err) return _next(err);
-        req.session.save((err: unknown) => {
-          if (err) return _next(err);
-          const plainUser = typeof user.toObject === 'function' ? user.toObject() : { ...user };
-          const { password, _id, __v, ...userWithoutPassword } = plainUser;
-          res.status(201).json({ 
-            user: userWithoutPassword, 
-            message: "Registration successful",
-            sessionId: req.sessionID 
-          });
-        });
+      await establishSession(req, user);
+
+      return res.status(201).json({
+        user: toPublicUser(user),
+        message: "Registration successful",
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Registration error:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      res.status(500).json({ message: "Registration failed", error: errorMessage });
+      // Duplicate key from a race between the checks above and the insert.
+      if (error?.code === 11000) {
+        return res.status(409).json({
+          message: "An account with those details already exists",
+          code: 'DUPLICATE',
+        });
+      }
+      return res.status(500).json({ message: "Registration failed", code: 'SERVER_ERROR' });
     }
   };
   app.post("/api/register", registerHandler);
-  app.post("/register", registerHandler);
 
-  const loginHandler = async (req: any, res: any, _next: (err?: unknown) => void) => {
+  const loginHandler = async (req: any, res: any) => {
     try {
-      console.log('Login request received:', {
-        body: { ...req.body, password: '[REDACTED]' },
-        sessionID: req.sessionID,
-        cookies: req.cookies
-      });
+      const username = typeof req.body?.username === 'string' ? req.body.username : '';
+      const password = typeof req.body?.password === 'string' ? req.body.password : '';
 
-      const { username, password } = req.body;
-      
-      if (!username || !password) {
-        console.log('Missing credentials:', { username: !!username, password: !!password });
-        return res.status(400).json({ 
+      if (!username.trim() || !password) {
+        return res.status(400).json({
           message: 'Username and password are required',
-          code: 'MISSING_CREDENTIALS'
+          code: 'MISSING_CREDENTIALS',
         });
       }
 
-      // First, try to find the user
-      const user = await storage.getUserByUsername(username);
-      console.log('User lookup result:', { 
-        found: !!user, 
-        username,
-        userId: user?.id 
-      });
-
+      const user = await findUserForLogin(username);
       if (!user) {
-        return res.status(401).json({ 
+        return res.status(401).json({
           message: 'Invalid username or password',
-          code: 'INVALID_CREDENTIALS'
+          code: 'INVALID_CREDENTIALS',
         });
       }
 
-      // Then verify the password
       const isValid = await bcrypt.compare(password, user.password);
-      console.log('Password verification:', { 
-        username,
-        isValid,
-        userId: user.id
-      });
-
       if (!isValid) {
-        return res.status(401).json({ 
+        return res.status(401).json({
           message: 'Invalid username or password',
-          code: 'INVALID_CREDENTIALS'
+          code: 'INVALID_CREDENTIALS',
         });
       }
 
-      // If we get here, the credentials are valid
-      req.login(user, (err: unknown) => {
-        if (err) {
-          console.error('Login error:', err);
-          return res.status(500).json({ 
-            message: 'Login failed',
-            code: 'LOGIN_ERROR'
-          });
-        }
+      await establishSession(req, user);
 
-        console.log('User logged in successfully:', {
-          userId: user.id,
-          username: user.username,
-          sessionID: req.sessionID
-        });
-
-        // Save session explicitly
-        req.session.save((err: unknown) => {
-          if (err) {
-            console.error('Session save error:', err);
-            return res.status(500).json({ 
-              message: 'Session save failed',
-              code: 'SESSION_ERROR'
-            });
-          }
-
-          console.log('Session saved successfully:', {
-            sessionID: req.sessionID,
-            cookie: req.session.cookie
-          });
-
-          // Set session cookie
-          res.cookie('foodfitness.sid', req.sessionID, {
-            path: '/',
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'lax',
-            maxAge: 24 * 60 * 60 * 1000
-          });
-
-          // Return user data
-          const plainUser = typeof user.toObject === 'function' ? user.toObject() : { ...user };
-          const { password: _, _id, __v, ...userWithoutPassword } = plainUser;
-          return res.json({
-            user: userWithoutPassword,
-            sessionID: req.sessionID
-          });
-        });
-      });
+      // NOTE: express-session sets the signed `foodfitness.sid` cookie itself.
+      // Writing that cookie manually here would overwrite it with an unsigned
+      // value, and every following request would then read as logged out.
+      return res.json({ user: toPublicUser(user) });
     } catch (error) {
       console.error('Login error:', error);
-      return res.status(500).json({ 
-        message: 'Login failed',
-        code: 'SERVER_ERROR'
-      });
+      return res.status(500).json({ message: 'Login failed', code: 'SERVER_ERROR' });
     }
   };
   app.post("/api/login", loginHandler);
-  app.post("/login", loginHandler);
 
   const logoutHandler = (req: any, res: any, next: (err?: unknown) => void) => {
     const username = req.user?.username;
+
+    const finish = () => {
+      res.clearCookie('foodfitness.sid', {
+        path: '/',
+        httpOnly: true,
+        secure: isProduction,
+        sameSite: 'lax',
+      });
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+      res.status(200).json({
+        message: username ? `${username} logged out successfully` : 'Logged out',
+      });
+    };
+
+    if (typeof req.logout !== 'function' || !req.session) {
+      return finish();
+    }
+
     req.logout((err: unknown) => {
       if (err) return next(err);
-      req.session.destroy((err: unknown) => {
-        if (err) return next(err);
-        // Clear all session cookies
-        res.clearCookie('foodfitness.sid', {
-          path: '/',
-          httpOnly: true,
-          secure: process.env.NODE_ENV === 'production',
-          sameSite: 'lax'
-        });
-        // Clear any other potential auth cookies
-        res.clearCookie('connect.sid', {
-          path: '/',
-          httpOnly: true,
-          secure: process.env.NODE_ENV === 'production',
-          sameSite: 'lax'
-        });
-        // Add cache control headers
-        res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-        res.setHeader('Pragma', 'no-cache');
-        res.setHeader('Expires', '0');
-        res.status(200).json({ message: `${username} logged out successfully` });
+      req.session.destroy((destroyErr: unknown) => {
+        if (destroyErr) return next(destroyErr);
+        finish();
       });
     });
   };
   app.post("/api/logout", logoutHandler);
-  app.post("/logout", logoutHandler);
 
   const userHandler = (req: any, res: any) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).json({ message: "Not authenticated" });
+    if (!req.isAuthenticated?.() || !req.user) {
+      return res.status(401).json({ message: "Not authenticated", code: 'NOT_AUTHENTICATED' });
     }
-    const userDoc = req.user as any;
-    // Convert Mongoose document to plain object and strip password
-    const plainUser = userDoc.toObject ? userDoc.toObject() : { ...userDoc };
-    const { password, _id, __v, ...userWithoutPassword } = plainUser;
-    res.json(userWithoutPassword);
+    res.setHeader('Cache-Control', 'no-store');
+    res.json(toPublicUser(req.user));
   };
   app.get("/api/user", userHandler);
-  app.get("/user", userHandler);
   // NOTE: SPA fallback is handled by setupVite (dev) and express.static (prod) in index.ts
 }

@@ -2,6 +2,7 @@ import { useAuth } from "../hooks/use-auth";
 import { Loader2 } from "lucide-react";
 import { Redirect, Route } from "wouter";
 import { useQuery } from "@tanstack/react-query";
+import { getQueryFn } from "./queryClient";
 
 export function ProtectedRoute({
   path,
@@ -15,7 +16,9 @@ export function ProtectedRoute({
   // Also fetch the user profile to check onboarding status
   const { data: profile, isLoading: profileLoading } = useQuery<any>({
     queryKey: ["/api/user-profile"],
+    queryFn: getQueryFn({ on401: "returnNull" }),
     enabled: !!user,
+    retry: false,
   });
 
   const isLoading = authLoading || (!!user && profileLoading);

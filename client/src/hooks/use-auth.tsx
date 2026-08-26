@@ -5,9 +5,8 @@ import {
   UseMutationResult,
 } from "@tanstack/react-query";
 import { User as SelectUser, InsertUser } from "../types";
-import { apiRequest, queryClient } from "../lib/queryClient";
+import { apiRequest, queryClient, getQueryFn } from "../lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { getQueryFn } from "../lib/queryClient";
 
 type AuthContextType = {
   user: SelectUser | null;
@@ -21,6 +20,15 @@ type AuthContextType = {
 type LoginData = Pick<InsertUser, "username" | "password">;
 
 export const AuthContext = createContext<AuthContextType | null>(null);
+
+/**
+ * Drop every cached query and seed the freshly authenticated user. Clearing is
+ * what stops one account's entries/goals/stats from showing up for the next.
+ */
+function resetCacheForUser(user: SelectUser | null) {
+  queryClient.clear();
+  queryClient.setQueryData(["/api/user"], user);
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const { toast } = useToast();
@@ -39,110 +47,54 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const loginMutation = useMutation<SelectUser, Error, LoginData>({
     mutationFn: async (credentials: LoginData) => {
-      try {
-        console.log('Attempting login with credentials:', {
-          username: credentials.username,
-          password: '[REDACTED]'
-        });
+      const res = await apiRequest("POST", "/api/login", credentials);
+      const data = await res.json();
 
-        const res = await apiRequest("POST", "/api/login", credentials);
-        console.log('Login response received:', {
-          status: res.status,
-          ok: res.ok,
-          headers: Object.fromEntries(res.headers.entries())
-        });
-
-        const data = await res.json();
-        console.log('Login data received:', {
-          hasUser: !!data.user,
-          sessionID: data.sessionID
-        });
-        
-        if (!data.user) {
-          throw new Error('No user data received');
-        }
-
-        return data.user;
-      } catch (error) {
-        console.error('Login error details:', {
-          error,
-          message: error instanceof Error ? error.message : 'Unknown error',
-          status: error instanceof Error && 'status' in error ? (error as any).status : undefined
-        });
-        
-        // If it's an API error, use its message
-        if (error instanceof Error && 'data' in error) {
-          const apiError = error as { data: { message: string } };
-          throw new Error(apiError.data.message || 'Login failed');
-        }
-        throw error;
+      if (!data?.user) {
+        throw new Error("No user data received from the server");
       }
+      return data.user as SelectUser;
     },
-    onSuccess: (user: SelectUser) => {
-      console.log('Login successful:', {
-        userId: user.id,
-        username: user.username
-      });
-
-      // Clear ALL existing queries to prevent cross-user data leakage
-      queryClient.clear();
-      
-      // Set the new user data
-      queryClient.setQueryData(["/api/user"], user);
-      
-      // Invalidate all user-specific queries so they refetch for the new user
-      queryClient.invalidateQueries({ queryKey: ["/api/food-entries"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/nutrition-goals"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/user-profile"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
-      // Dashboard queries use dynamic keys like /api/dashboard/123
-      queryClient.invalidateQueries({ predicate: (query) => 
-        typeof query.queryKey[0] === 'string' && query.queryKey[0].startsWith('/api/dashboard/')
-      });
-      
+    onSuccess: (loggedInUser: SelectUser) => {
+      resetCacheForUser(loggedInUser);
       toast({
         title: "Login successful",
         description: "Welcome back!",
       });
     },
-    onError: (error: Error) => {
-      console.error('Login mutation error:', {
-        message: error.message,
-        stack: error.stack
-      });
-
-      // Clear user data on error
-      queryClient.setQueryData(["/api/user"], null);
-      
-      // Clear all queries
-      queryClient.clear();
-      
+    onError: (err: Error) => {
+      resetCacheForUser(null);
       toast({
         title: "Login failed",
-        description: error.message,
+        description: err.message,
         variant: "destructive",
       });
     },
-    retry: 1,
-    retryDelay: 1000,
   });
 
   const registerMutation = useMutation<SelectUser, Error, InsertUser>({
     mutationFn: async (credentials: InsertUser) => {
       const res = await apiRequest("POST", "/api/register", credentials);
-      return res.json();
+      const data = await res.json();
+
+      // The endpoint replies with { user, message } — storing the envelope
+      // instead of the user left the app with a user object that had no id.
+      if (!data?.user) {
+        throw new Error("No user data received from the server");
+      }
+      return data.user as SelectUser;
     },
-    onSuccess: (user: SelectUser) => {
-      queryClient.setQueryData(["/api/user"], user);
+    onSuccess: (newUser: SelectUser) => {
+      resetCacheForUser(newUser);
       toast({
         title: "Registration successful",
         description: "Welcome to NutriTrack!",
       });
     },
-    onError: (error: Error) => {
+    onError: (err: Error) => {
       toast({
         title: "Registration failed",
-        description: error.message,
+        description: err.message,
         variant: "destructive",
       });
     },
@@ -153,26 +105,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await apiRequest("POST", "/api/logout");
     },
     onSuccess: () => {
-      // Clear ALL queries to prevent stale data for next login
-      queryClient.clear();
-      queryClient.setQueryData(["/api/user"], null);
-      queryClient.removeQueries({ queryKey: ["/api/food-entries"] });
-      queryClient.removeQueries({ queryKey: ["/api/nutrition-goals"] });
-      queryClient.removeQueries({ queryKey: ["/api/user-profile"] });
-      queryClient.removeQueries({ queryKey: ["/api/stats"] });
-      // Remove all dashboard queries
-      queryClient.removeQueries({ predicate: (query) => 
-        typeof query.queryKey[0] === 'string' && query.queryKey[0].startsWith('/api/dashboard/')
-      });
+      resetCacheForUser(null);
       toast({
         title: "Logged out",
         description: "You have been logged out successfully",
       });
     },
-    onError: (error: Error) => {
+    onError: (err: Error) => {
+      // The server session is likely gone either way — clear locally so the
+      // user is not stuck in a half-authenticated UI.
+      resetCacheForUser(null);
       toast({
         title: "Logout failed",
-        description: error.message,
+        description: err.message,
         variant: "destructive",
       });
     },

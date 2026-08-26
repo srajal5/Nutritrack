@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import express, { type Request, Response, NextFunction } from "express";
 import { createServer } from "http";
+import path from "path";
 import { registerRoutes } from "./routes";
 import { setupVite, log } from "./vite";
 import { connectDB } from "./db";
@@ -18,8 +19,9 @@ app.use(helmet({
   contentSecurityPolicy: config.env === 'production' ? undefined : false,
 }));
 app.disable('x-powered-by');
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
+// Food photos are posted as base64 data URLs, which blow past the 100kb default.
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: false, limit: '10mb' }));
 
 // Enhanced Security Headers
 app.use((_req, res, next) => {
@@ -29,24 +31,9 @@ app.use((_req, res, next) => {
   next();
 });
 
-app.use((req, res, next) => {
-  const allowedOrigins = config.allowedOrigins;
-  
-  const origin = req.headers.origin;
-  if (origin && (allowedOrigins.includes(origin) || allowedOrigins.some(ao => origin.startsWith(ao)))) {
-    res.header('Access-Control-Allow-Origin', origin);
-  } else if (!origin && config.env === 'development') {
-    // Allow server-to-server or non-browser requests in dev
-  }
-  
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
-  res.header('Access-Control-Allow-Credentials', 'true');
-  if (req.method === 'OPTIONS') {
-    return res.sendStatus(200);
-  }
-  next();
-});
+// NOTE: CORS is configured in one place only — setupAuth() in server/auth.ts.
+// A second hand-rolled layer here used to answer preflights before that ran,
+// which meant the two could disagree about which origins are allowed.
 
 app.use((req, res, next) => {
   const start = Date.now();
@@ -102,12 +89,20 @@ app.use((req, res, next) => {
     // Register routes after database connection is established
     await registerRoutes(app);
 
+    // Unknown /api routes must answer with JSON. Without this they fall through
+    // to the SPA catch-all below and the client receives an HTML page where it
+    // expects JSON, which surfaces as a confusing parse error.
+    app.use('/api', (req, res) => {
+      res.status(404).json({ message: `Not found: ${req.method} /api${req.path}` });
+    });
+
     app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
       const status = err.status || err.statusCode || 500;
       const message = err.message || "Internal Server Error";
 
+      console.error('Unhandled server error:', err);
+      if (res.headersSent) return;
       res.status(status).json({ message });
-      throw err;
     });
 
     // importantly only setup vite in development and after
@@ -116,11 +111,12 @@ app.use((req, res, next) => {
     if (app.get("env") === "development") {
       await setupVite(app, server);
     } else {
-      // Serve static files from the dist/public directory
-      app.use(express.static('dist/public'));
+      const distPath = path.resolve(import.meta.dirname, '..', 'public');
+      // Serve static files from the built client
+      app.use(express.static(distPath));
       // Serve index.html for all other routes (SPA fallback)
       app.get('*', (_req, res) => {
-        res.sendFile('dist/public/index.html', { root: '.' });
+        res.sendFile(path.join(distPath, 'index.html'));
       });
     }
 
