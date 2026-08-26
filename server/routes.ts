@@ -1,17 +1,17 @@
 import type { Express, Request, Response } from "express";
 
-import storage, { type UserDocument, type NutritionGoalInput } from "./storage";
+import storage, { type UserDocument, type NutritionGoalInput } from "./storage.js";
 import { ZodError } from "zod";
 import { fromZodError } from "zod-validation-error";
-import { setupAuth } from "./auth";
-import { getFitnessResponse, getNutritionRecommendations } from "./openai";
-import { ensureAuthenticated } from "./middleware";
-import foodEntriesRouter from './routes/food-entries';
-import nutritionGoalsRouter from './routes/nutrition-goals';
-import dashboardRouter from './routes/dashboard';
-import statsRouter from './routes/stats';
-import userProfilesRouter from './routes/user-profiles';
-import config from "./config";
+import { setupAuth } from "./auth.js";
+import { getFitnessResponse, getNutritionRecommendations } from "./openai.js";
+import { ensureAuthenticated } from "./middleware.js";
+import foodEntriesRouter from './routes/food-entries.js';
+import nutritionGoalsRouter from './routes/nutrition-goals.js';
+import dashboardRouter from './routes/dashboard.js';
+import statsRouter from './routes/stats.js';
+import userProfilesRouter from './routes/user-profiles.js';
+import config from "./config.js";
 import mongoose from "mongoose";
 
 // Extend Express.Request to include user

@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import { ensureAuthenticated } from '../middleware';
-import storage from '../storage';
+import { ensureAuthenticated } from '../middleware.js';
+import storage from '../storage.js';
 import { z } from 'zod';
 
 const router = Router();

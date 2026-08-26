@@ -1,5 +1,5 @@
 import OpenAI from "openai";
-import config from "./config";
+import config from "./config.js";
 
 // Use centralized config
 const AI_MODEL = config.ai.model;

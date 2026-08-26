@@ -5,8 +5,18 @@
 
 import 'dotenv/config';
 
+const nodeEnv = process.env.NODE_ENV || 'development';
+
+/**
+ * Vercel sets VERCEL_ENV=production for production deployments. Trust it even
+ * when NODE_ENV has been left at "development", so a live HTTPS site never
+ * falls back to non-secure session cookies because of a stray env var.
+ */
+const isProduction = nodeEnv === 'production' || process.env.VERCEL_ENV === 'production';
+
 export const config = {
-  env: process.env.NODE_ENV || 'development',
+  env: nodeEnv,
+  isProduction,
   port: parseInt(process.env.PORT || '3001', 10),
   
   // Security

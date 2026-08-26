@@ -1,7 +1,7 @@
 import { Router } from "express";
-import { ensureAuthenticated } from "../middleware";
-import storage from "../storage";
-import { getAIStatsInsights } from "../openai";
+import { ensureAuthenticated } from "../middleware.js";
+import storage from "../storage.js";
+import { getAIStatsInsights } from "../openai.js";
 
 const router = Router();
 

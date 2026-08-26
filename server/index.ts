@@ -2,13 +2,13 @@ import 'dotenv/config';
 import express, { type Request, Response, NextFunction } from "express";
 import { createServer } from "http";
 import path from "path";
-import { registerRoutes } from "./routes";
-import { setupVite, log } from "./vite";
-import { connectDB } from "./db";
-import storage from "./storage";
+import { registerRoutes } from "./routes.js";
+import { setupVite, log } from "./vite.js";
+import { connectDB } from "./db.js";
+import storage from "./storage.js";
 import mongoose from 'mongoose';
 import helmet from 'helmet';
-import config from './config';
+import config from './config.js';
 
 // Log environment variables (without sensitive values)
 console.log('Environment:', config.env);

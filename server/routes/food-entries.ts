@@ -1,8 +1,8 @@
 import { Router } from 'express';
-import { ensureAuthenticated } from '../middleware';
-import storage, { FoodEntryDocument } from '../storage';
+import { ensureAuthenticated } from '../middleware.js';
+import storage, { FoodEntryDocument } from '../storage.js';
 import { z } from 'zod';
-import { analyzeFoodEntry } from '../openai';
+import { analyzeFoodEntry } from '../openai.js';
 
 const router = Router();
 
@@ -211,7 +211,7 @@ router.post('/', ensureAuthenticated, async (req, res) => {
         finalData.sugar = analysis.sugar;
       } catch (aiError) {
         console.warn("AI analysis failed, using fallback values:", aiError);
-        const analysis = await import('../openai').then(m => m.getFoodNutrientsFallback(finalData.name));
+        const analysis = await import('../openai.js').then(m => m.getFoodNutrientsFallback(finalData.name));
         finalData.calories = analysis.calories;
         finalData.protein = analysis.protein;
         finalData.carbs = analysis.carbs;

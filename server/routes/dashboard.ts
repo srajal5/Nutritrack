@@ -1,8 +1,8 @@
 import express from 'express';
-import storage from '../storage';
-import { ensureAuthenticated } from '../middleware';
-import { getNutritionRecommendations } from '../openai';
-import { calculateBackendNutritionTargets } from '../nutrition-calculator';
+import storage from '../storage.js';
+import { ensureAuthenticated } from '../middleware.js';
+import { getNutritionRecommendations } from '../openai.js';
+import { calculateBackendNutritionTargets } from '../nutrition-calculator.js';
 
 const router = express.Router();
 

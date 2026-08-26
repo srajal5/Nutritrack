@@ -1,8 +1,8 @@
 import { Router } from "express";
-import { ensureAuthenticated } from "../middleware";
-import storage from "../storage";
-import { generatePersonalizedPlan } from "../openai";
-import { calculateBackendNutritionTargets } from "../nutrition-calculator";
+import { ensureAuthenticated } from "../middleware.js";
+import storage from "../storage.js";
+import { generatePersonalizedPlan } from "../openai.js";
+import { calculateBackendNutritionTargets } from "../nutrition-calculator.js";
 
 const router = Router();
 

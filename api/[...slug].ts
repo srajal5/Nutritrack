@@ -8,8 +8,8 @@ import mongoose from 'mongoose';
 // no detail. Loading them here means a bad module surfaces as a readable JSON
 // error and /api/health keeps working well enough to say what broke.
 const loadServer = () => Promise.all([
-  import("../server/db"),
-  import("../server/routes"),
+  import("../server/db.js"),
+  import("../server/routes.js"),
 ]).then(([db, routes]) => ({ connectDB: db.connectDB, registerRoutes: routes.registerRoutes }));
 
 const app = express();

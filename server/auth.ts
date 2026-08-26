@@ -2,8 +2,8 @@ import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
 import { Express } from "express";
 import session from "express-session";
-import storage from "./storage";
-import type { UserDocument } from "./storage";
+import storage from "./storage.js";
+import type { UserDocument } from "./storage.js";
 // bcryptjs, not the native "bcrypt": the native build resolves its .node binary
 // at runtime, which serverless bundlers cannot trace, so the module fails to
 // load once deployed. The hash format is identical ($2b$), so existing
@@ -12,7 +12,7 @@ import bcrypt from "bcryptjs";
 import MongoStore from "connect-mongo";
 import mongoose from "mongoose";
 import cors from "cors";
-import config from "./config";
+import config from "./config.js";
 
 declare global {
   namespace Express {
@@ -20,7 +20,7 @@ declare global {
   }
 }
 
-const isProduction = config.env === 'production';
+const isProduction = config.isProduction;
 
 /**
  * In production the session secret must come from the environment — a hard-coded
