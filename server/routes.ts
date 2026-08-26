@@ -12,6 +12,7 @@ import dashboardRouter from './routes/dashboard';
 import statsRouter from './routes/stats';
 import userProfilesRouter from './routes/user-profiles';
 import config from "./config";
+import mongoose from "mongoose";
 
 // Extend Express.Request to include user
 declare global {
@@ -25,6 +26,16 @@ declare global {
 export async function registerRoutes(app: Express): Promise<void> {
   // Set up authentication
   setupAuth(app);
+
+  // Liveness/diagnostics. On serverless this is also answered before the route
+  // tree boots, so it still reports back when something failed to initialise.
+  app.get("/api/health", (_req, res) => {
+    res.json({
+      ok: true,
+      env: process.env.NODE_ENV || 'development',
+      database: mongoose.connection.readyState === 1 ? 'ok' : `readyState=${mongoose.connection.readyState}`,
+    });
+  });
 
   // prefix all routes with /api
   // NOTE: Food entries routes are handled by the foodEntriesRouter (mounted below)

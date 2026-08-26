@@ -4,7 +4,11 @@ import { Express } from "express";
 import session from "express-session";
 import storage from "./storage";
 import type { UserDocument } from "./storage";
-import bcrypt from "bcrypt";
+// bcryptjs, not the native "bcrypt": the native build resolves its .node binary
+// at runtime, which serverless bundlers cannot trace, so the module fails to
+// load once deployed. The hash format is identical ($2b$), so existing
+// passwords keep verifying.
+import bcrypt from "bcryptjs";
 import MongoStore from "connect-mongo";
 import mongoose from "mongoose";
 import cors from "cors";
