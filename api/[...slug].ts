@@ -1,8 +1,16 @@
 import 'dotenv/config';
 import express, { type Request, type Response, type NextFunction } from 'express';
 import mongoose from 'mongoose';
-import { registerRoutes } from "../server/routes";
-import { connectDB } from "../server/db";
+
+// The application modules are imported lazily, inside init(). A static import
+// that throws while loading kills the serverless runtime before any handler
+// exists, and the platform can then only answer FUNCTION_INVOCATION_FAILED with
+// no detail. Loading them here means a bad module surfaces as a readable JSON
+// error and /api/health keeps working well enough to say what broke.
+const loadServer = () => Promise.all([
+  import("../server/db"),
+  import("../server/routes"),
+]).then(([db, routes]) => ({ connectDB: db.connectDB, registerRoutes: routes.registerRoutes }));
 
 const app = express();
 app.disable('x-powered-by');
@@ -29,6 +37,7 @@ let lastInitError: Error | null = null;
 function init(): Promise<void> {
   if (!initPromise) {
     initPromise = (async () => {
+      const { connectDB, registerRoutes } = await loadServer();
       await connectDB();
       await registerRoutes(app);
 
@@ -78,6 +87,7 @@ async function health(res: any) {
   }
 
   try {
+    const { connectDB } = await loadServer();
     await connectDB();
     checks.database = mongoose.connection.readyState === 1 ? 'ok' : `readyState=${mongoose.connection.readyState}`;
   } catch (err: any) {
