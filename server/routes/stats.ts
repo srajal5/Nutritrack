@@ -2,6 +2,7 @@ import { Router } from "express";
 import { ensureAuthenticated } from "../middleware.js";
 import storage from "../storage.js";
 import { getAIStatsInsights } from "../openai.js";
+import { getOrRefresh } from "../ai-cache.js";
 
 const router = Router();
 
@@ -13,26 +14,19 @@ router.get("/", ensureAuthenticated, async (req, res) => {
 
     const userId = req.user.id;
 
-    // Fetch nutrition goals
-    let nutritionGoals = await storage.getNutritionGoalByUserId(userId);
+    // Targets come from the user's persisted plan or not at all. Substituting
+    // a stand-in 2000/150 here is what made unrelated users' stats look alike.
+    const nutritionGoals = await storage.getNutritionGoalByUserId(userId);
     if (!nutritionGoals) {
-      // Default goals if none exist
-      nutritionGoals = {
-        userId,
-        calorieGoal: 2000,
-        proteinGoal: 150,
-        carbGoal: 250,
-        fatGoal: 65,
-        fiberGoal: 25,
-        sugarGoal: 50,
-        id: 0,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      } as any;
+      return res.status(404).json({
+        message: 'No nutrition plan yet. Complete onboarding to see your stats.',
+        code: 'NO_PLAN',
+      });
     }
 
     // Generate last 7 days data
-    const nutritionData = [];
+    interface DaySummary { date: string; fullDate: string; calories: number; protein: number; carbs: number; fat: number; fiber: number; sugar: number; }
+    const nutritionData: DaySummary[] = [];
     for (let i = 6; i >= 0; i--) {
       const date = new Date();
       date.setDate(date.getDate() - i);
@@ -62,15 +56,22 @@ router.get("/", ensureAuthenticated, async (req, res) => {
       nutritionData.push(daySummary);
     }
 
-    // Call OpenAI for insights and achievements
-    const aiInsights = await getAIStatsInsights(nutritionData, nutritionGoals);
+    // Insights are an enhancement, never a blocker. Awaiting the model here made
+    // the Stats page take 15s+ and time out. Serve empty immediately and warm
+    // the cache in the background, exactly as the dashboard does.
+    const insightsKey = `stats:${userId}:${nutritionData.map((d) => Math.round(d.calories / 100)).join('-')}`;
+    const aiInsights = getOrRefresh(
+      insightsKey,
+      { insights: [], achievements: [] } as any,
+      () => getAIStatsInsights(nutritionData, nutritionGoals as any),
+    );
 
     // Format the goals for the frontend
     const formattedGoals = [
       {
         id: '1',
         name: 'Daily Calories',
-        target: nutritionGoals?.calorieGoal ?? 2000,
+        target: nutritionGoals.calorieGoal,
         current: nutritionData[6].calories, // Today's calories
         unit: 'cal',
         category: 'nutrition',
@@ -79,7 +80,7 @@ router.get("/", ensureAuthenticated, async (req, res) => {
       {
         id: '2',
         name: 'Protein Intake',
-        target: nutritionGoals?.proteinGoal ?? 150,
+        target: nutritionGoals.proteinGoal,
         current: nutritionData[6].protein,
         unit: 'g',
         category: 'nutrition',
@@ -88,7 +89,7 @@ router.get("/", ensureAuthenticated, async (req, res) => {
       {
         id: '3',
         name: 'Carbs Target',
-        target: nutritionGoals?.carbGoal ?? 250,
+        target: nutritionGoals.carbGoal,
         current: nutritionData[6].carbs,
         unit: 'g',
         category: 'nutrition',
@@ -97,7 +98,7 @@ router.get("/", ensureAuthenticated, async (req, res) => {
       {
         id: '4',
         name: 'Fat Limit',
-        target: nutritionGoals?.fatGoal ?? 65,
+        target: nutritionGoals.fatGoal,
         current: nutritionData[6].fat,
         unit: 'g',
         category: 'nutrition',
@@ -106,7 +107,7 @@ router.get("/", ensureAuthenticated, async (req, res) => {
       {
         id: '5',
         name: 'Fiber Goal',
-        target: nutritionGoals?.fiberGoal ?? 25,
+        target: nutritionGoals.fiberGoal,
         current: nutritionData[6].fiber,
         unit: 'g',
         category: 'nutrition',
@@ -115,7 +116,7 @@ router.get("/", ensureAuthenticated, async (req, res) => {
       {
         id: '6',
         name: 'Sugar Limit',
-        target: nutritionGoals?.sugarGoal ?? 50,
+        target: nutritionGoals.sugarGoal,
         current: nutritionData[6].sugar,
         unit: 'g',
         category: 'nutrition',

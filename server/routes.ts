@@ -1,8 +1,6 @@
 import type { Express, Request, Response } from "express";
 
-import storage, { type UserDocument, type NutritionGoalInput } from "./storage.js";
-import { ZodError } from "zod";
-import { fromZodError } from "zod-validation-error";
+import storage, { type UserDocument } from "./storage.js";
 import { setupAuth } from "./auth.js";
 import { getFitnessResponse, getNutritionRecommendations } from "./openai.js";
 import { ensureAuthenticated } from "./middleware.js";
@@ -11,7 +9,7 @@ import nutritionGoalsRouter from './routes/nutrition-goals.js';
 import dashboardRouter from './routes/dashboard.js';
 import statsRouter from './routes/stats.js';
 import userProfilesRouter from './routes/user-profiles.js';
-import config from "./config.js";
+import weightRouter from './routes/weight.js';
 import mongoose from "mongoose";
 
 // Extend Express.Request to include user
@@ -124,71 +122,11 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
-  // Nutrition Goals API
-  app.post("/api/nutrition-goals", ensureAuthenticated, async (req, res) => {
-    try {
-      if (!req.user) {
-        return res.status(401).json({ message: "User not authenticated" });
-      }
-
-      const goalData: NutritionGoalInput = {
-        userId: req.user.id,
-        calorieGoal: Number(req.body.calorieGoal),
-        proteinGoal: Number(req.body.proteinGoal),
-        carbGoal: Number(req.body.carbGoal),
-        fatGoal: Number(req.body.fatGoal),
-        fiberGoal: req.body.fiberGoal ? Number(req.body.fiberGoal) : config.defaults.nutrition.fiberGoal || 30,
-        sugarGoal: req.body.sugarGoal ? Number(req.body.sugarGoal) : config.defaults.nutrition.sugarGoal || 50
-      };
-
-      const nutritionGoal = await storage.setNutritionGoal(goalData);
-      res.status(201).json(nutritionGoal);
-    } catch (error) {
-      if (error instanceof ZodError) {
-        return res.status(400).json({ message: fromZodError(error).message });
-      }
-      res.status(500).json({ message: "Failed to set nutrition goals" });
-    }
-  });
-
-  app.get("/api/nutrition-goals", ensureAuthenticated, async (req, res) => {
-    try {
-      if (!req.user) {
-        return res.status(401).json({ message: "User not authenticated" });
-      }
-
-      // Get userId from query parameter or authenticated user
-      const userId = req.query.userId ? Number(req.query.userId) : req.user.id;
-      
-      if (isNaN(userId)) {
-        return res.status(400).json({ message: "Invalid user ID" });
-      }
-
-      const nutritionGoal = await storage.getNutritionGoalByUserId(userId);
-      if (!nutritionGoal) {
-        // Return default goals if none exist
-        return res.json({
-          userId: userId,
-          calorieGoal: config.defaults.nutrition.calorieGoal,
-          proteinGoal: config.defaults.nutrition.proteinGoal,
-          carbGoal: config.defaults.nutrition.carbGoal,
-          fatGoal: config.defaults.nutrition.fatGoal,
-          fiberGoal: config.defaults.nutrition.fiberGoal,
-          sugarGoal: config.defaults.nutrition.sugarGoal,
-          createdAt: new Date(),
-          updatedAt: new Date()
-        });
-      }
-      
-      res.json(nutritionGoal);
-    } catch (error) {
-      console.error("Error fetching nutrition goals:", error);
-      res.status(500).json({ 
-        message: "Failed to fetch nutrition goals", 
-        error: error instanceof Error ? error.message : "Unknown error" 
-      });
-    }
-  });
+  // NOTE: /api/nutrition-goals is served solely by nutritionGoalsRouter below.
+  // Duplicate app.get/app.post handlers used to be declared here; because they
+  // were registered first they shadowed the router entirely, and their
+  // "return config defaults when none exist" branch handed every new user the
+  // same 2000 kcal / 150g plan. One route, one source of truth.
 
   // Recommendations API
   app.get("/api/recommendations", ensureAuthenticated, async (req, res) => {
@@ -276,6 +214,7 @@ export async function registerRoutes(app: Express): Promise<void> {
 
   // User Profile routes
   app.use('/api/user-profile', userProfilesRouter);
+  app.use('/api/weight', weightRouter);
 
   // Health check route
   app.get('/health', (_req, res) => {

@@ -1,50 +1,38 @@
 import { useEffect, useRef } from 'react';
-import { useQuery } from '@tanstack/react-query';
 import { Chart, PolarAreaController, RadialLinearScale, ArcElement, Tooltip } from 'chart.js';
 import { Progress } from '@/components/ui/progress';
-import { FoodEntryDocument } from '../types';
 import { useTheme } from '@/components/ThemeProvider';
-import { useAuth } from '@/hooks/use-auth';
+import { usePlan } from '@/hooks/use-plan';
 
 Chart.register(PolarAreaController, RadialLinearScale, ArcElement, Tooltip);
 
 const NutrientBreakdownChart = () => {
-  const { user } = useAuth();
-  const userId = user?.id;
   const chartRef = useRef<HTMLCanvasElement>(null);
   const chartInstance = useRef<Chart | null>(null);
   const { resolvedTheme } = useTheme();
-  
-  // Fetch food entries
-  const { data: todayEntries = [] } = useQuery<FoodEntryDocument[]>({
-    queryKey: [`/api/food-entries/daily?userId=${userId}`],
-    initialData: []
-  });
-  
-  // Calculate macronutrient totals and percentages
+
+  // Reads the canonical dashboard totals. This component used to query
+  // /api/food-entries/daily and treat the response as an array, but that
+  // endpoint returns a summary OBJECT — so `.length` was always undefined and
+  // the chart silently rendered 0/0/0 for every user, forever.
+  const { today } = usePlan();
+
   const calculateMacros = () => {
-    if (!todayEntries || !todayEntries.length) {
-      return { protein: 0, carbs: 0, fat: 0, proteinPct: 0, carbsPct: 0, fatPct: 0 };
-    }
-    
-    const totals = todayEntries.reduce((acc, entry) => {
-      return {
-        protein: acc.protein + (entry.protein || 0),
-        carbs: acc.carbs + (entry.carbs || 0),
-        fat: acc.fat + (entry.fat || 0),
-      };
-    }, { protein: 0, carbs: 0, fat: 0 });
-    
-    const totalCals = totals.protein * 4 + totals.carbs * 4 + totals.fat * 9;
-    
+    const protein = Math.round(today?.protein ?? 0);
+    const carbs = Math.round(today?.carbs ?? 0);
+    const fat = Math.round(today?.fat ?? 0);
+
+    // Percentages are of energy actually consumed, not of the target.
+    const totalCals = protein * 4 + carbs * 4 + fat * 9;
+
     return {
-      ...totals,
-      proteinPct: totalCals > 0 ? Math.round((totals.protein * 4 / totalCals) * 100) : 0,
-      carbsPct: totalCals > 0 ? Math.round((totals.carbs * 4 / totalCals) * 100) : 0,
-      fatPct: totalCals > 0 ? Math.round((totals.fat * 9 / totalCals) * 100) : 0,
+      protein, carbs, fat,
+      proteinPct: totalCals > 0 ? Math.round((protein * 4 / totalCals) * 100) : 0,
+      carbsPct: totalCals > 0 ? Math.round((carbs * 4 / totalCals) * 100) : 0,
+      fatPct: totalCals > 0 ? Math.round((fat * 9 / totalCals) * 100) : 0,
     };
   };
-  
+
   const { protein, carbs, fat, proteinPct, carbsPct, fatPct } = calculateMacros();
   
   useEffect(() => {

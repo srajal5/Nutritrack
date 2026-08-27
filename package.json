@@ -7,8 +7,14 @@
     "dev": "cross-env NODE_ENV=development tsx server/index.ts",
     "build": "vite build && tsc && esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist/server",
     "start": "node dist/server/index.js",
-    "check": "tsc",
-    "preview": "vite preview --port 4173"
+    "check": "tsc --noEmit",
+    "test": "tsx server/nutrition-calculator.test.ts && tsx server/food-suggestion-service.test.ts && tsx server/ai-enrichment.test.ts && tsx shared/nutrition-math.test.ts",
+    "diagnose": "tsx server/diagnose-profiles.ts",
+    "test:browser": "node tests/browser-journey.mjs",
+    "preview": "vite preview --port 4173",
+    "typecheck": "tsc --noEmit",
+    "test:components": "node tests/component-regression.mjs",
+    "fixtures:cleanup": "node tests/seed-fixtures.mjs --cleanup"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",
@@ -110,6 +116,7 @@
     "cross-env": "^7.0.3",
     "daisyui": "^5.0.50",
     "esbuild": "^0.25.0",
+    "playwright": "^1.62.1",
     "postcss": "^8.4.47",
     "tailwindcss": "^3.4.14",
     "tsx": "^4.19.1",

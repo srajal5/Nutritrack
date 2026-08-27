@@ -1,163 +1,105 @@
 import { Router } from "express";
+import { ZodError } from "zod";
 import { ensureAuthenticated } from "../middleware.js";
 import storage from "../storage.js";
-import { generatePersonalizedPlan } from "../openai.js";
-import { calculateBackendNutritionTargets } from "../nutrition-calculator.js";
+import {
+  buildPlan,
+  saveProfileAndPlan,
+  onboardingSchema,
+  readPlanFromProfile,
+  findMissingProfileFields,
+  PlanValidationError,
+} from "../plan-service.js";
+import { interpretGoalText } from "../nutrition-calculator.js";
 
 const router = Router();
 
-// Get the user's profile
+/** Get the user's profile plus the plan the dashboard will read. */
 router.get("/", ensureAuthenticated, async (req, res) => {
   try {
     const userId = req.user!.id;
-    let profile = await storage.getUserProfile(userId);
-    
-    // Convert Mongoose document to plain object
-    if (profile && typeof profile.toObject === 'function') {
-      profile = profile.toObject();
-    }
-    
-    res.json(profile);
+    let profile: any = await storage.getUserProfile(userId);
+    if (profile && typeof profile.toObject === 'function') profile = profile.toObject();
+
+    if (!profile) return res.json(null);
+
+    res.json({
+      ...profile,
+      // Same object the dashboard consumes, so the two pages can never disagree.
+      resolvedPlan: readPlanFromProfile(profile),
+      missingFields: findMissingProfileFields(profile),
+    });
   } catch (error) {
     console.error("Error fetching user profile:", error);
     res.status(500).json({ message: "Failed to fetch user profile" });
   }
 });
 
-// Update the user's profile & save personalized nutrition plan
+/**
+ * Complete onboarding: validate -> calculate -> AI narrative -> persist -> respond.
+ * The response is only sent after the write succeeds, so the client can safely
+ * redirect to the dashboard the moment it resolves.
+ */
 router.put("/", ensureAuthenticated, async (req, res) => {
+  const userId = req.user!.id;
   try {
-    const userId = req.user!.id;
-    const body = req.body || {};
-    
-    // Normalize goal identifiers from manual or AI structures
-    const primaryGoal = body.goal?.primaryGoal || body.goal?.primary || 'MAINTAIN_WEIGHT';
-    const secondaryGoals = Array.isArray(body.goal?.secondaryGoals) 
-      ? body.goal.secondaryGoals 
-      : (Array.isArray(body.goal?.secondary) ? body.goal.secondary : []);
+    const parsed = onboardingSchema.parse(req.body);
 
-    // Extract profile stats
-    const age = Number(body.profile?.age) || 30;
-    const gender = body.profile?.gender || 'male';
-    const heightCm = Number(body.profile?.heightCm) || 170;
-    const weightKg = Number(body.profile?.weightKg) || 70;
-    const targetWeightKg = Number(body.profile?.targetWeightKg) || weightKg;
-    const activityLevelStr = typeof body.profile?.activityLevel === 'string' ? body.profile.activityLevel : 'MODERATE';
-    const activityLevel = activityLevelStr.toUpperCase();
+    const plan = await buildPlan(parsed);
+    let saved: any = await saveProfileAndPlan(userId, parsed, plan);
+    if (saved && typeof saved.toObject === 'function') saved = saved.toObject();
 
-    const fitnessLevelStr = typeof body.profile?.fitnessLevel === 'string' ? body.profile.fitnessLevel : 'BEGINNER';
-    const fitnessLevel = fitnessLevelStr.toUpperCase();
-
-    // Workout details
-    const daysPerWeek = Number(body.workout?.daysPerWeek) || 3;
-    const location = body.workout?.location || 'HOME';
-    const equipment = Array.isArray(body.workout?.equipment) ? body.workout.equipment : [];
-
-    // Compute backend nutrition targets deterministically
-    const calculatedTargets = calculateBackendNutritionTargets({
-      age,
-      weightKg,
-      heightCm,
-      gender,
-      activityLevel,
-      goal: primaryGoal
+    return res.json({
+      success: true,
+      onboardingCompleted: true,
+      plan,
+      profile: saved,
     });
-
-    const calorieTarget = Number(body.nutrition?.calorieTarget) || calculatedTargets.calorieTarget;
-    const proteinTarget = Number(body.nutrition?.proteinTarget) || calculatedTargets.proteinTarget;
-
-    // Normalize AI plan fields
-    const summary = body.plan?.summary || body.aiPlan?.summary || body.planSummary || 'Personalized Nutrition & Training Plan';
-    const weeklyWorkoutPlan = body.plan?.weeklyWorkoutPlan || body.aiPlan?.weeklyWorkoutPlan || body.workoutGuidance || [];
-    const nutritionGuidelines = body.plan?.nutritionGuidelines || body.aiPlan?.nutritionGuidelines || body.recommendations || [];
-
-    const normalizedProfileData = {
-      isCompleted: true,
-      profile: {
-        age,
-        gender,
-        heightCm,
-        weightKg,
-        targetWeightKg,
-        activityLevel,
-        fitnessLevel
-      },
-      goal: {
-        primaryGoal,
-        secondaryGoals,
-        desiredOutcome: body.goal?.desiredOutcome || ''
-      },
-      workout: {
-        daysPerWeek,
-        location,
-        equipment
-      },
-      nutrition: {
-        dietaryPreference: body.nutrition?.dietaryPreference || 'NO_RESTRICTION',
-        allergies: body.nutrition?.allergies || [],
-        dislikedFoods: body.nutrition?.dislikedFoods || [],
-        preferredFoods: body.nutrition?.preferredFoods || [],
-        calorieTarget,
-        proteinTarget
-      },
-      aiPlan: {
-        summary,
-        weeklyWorkoutPlan,
-        nutritionGuidelines,
-        dailyTargets: {
-          calories: calorieTarget,
-          protein: proteinTarget,
-          carbs: calculatedTargets.carbTarget,
-          fat: calculatedTargets.fatTarget,
-          water: calculatedTargets.waterTarget
-        }
-      }
-    };
-
-    let updatedProfile = await storage.updateUserProfile(userId, normalizedProfileData as any);
-
-    // Sync NutritionGoal table in DB for fast queries
-    await storage.setNutritionGoal({
-      userId,
-      calorieGoal: calorieTarget,
-      proteinGoal: proteinTarget,
-      carbGoal: calculatedTargets.carbTarget,
-      fatGoal: calculatedTargets.fatTarget,
-      fiberGoal: 25,
-      sugarGoal: 50
-    } as any);
-
-    if (updatedProfile && typeof updatedProfile.toObject === 'function') {
-      updatedProfile = updatedProfile.toObject();
-    }
-
-    res.json(updatedProfile);
   } catch (error) {
+    if (error instanceof ZodError) {
+      const missingFields = error.issues.map((i) => i.path.join('.'));
+      return res.status(400).json({
+        message:
+          'To create an accurate personalized plan, please provide your age, height, weight, biological sex, activity level and goal.',
+        code: 'INCOMPLETE_PROFILE',
+        missingFields,
+        issues: error.issues.map((i) => ({ path: i.path.join('.'), message: i.message })),
+      });
+    }
+    if (error instanceof PlanValidationError) {
+      return res.status(400).json({
+        message: error.message,
+        code: 'INCOMPLETE_PROFILE',
+        missingFields: error.missingFields,
+      });
+    }
     console.error("Error updating user profile:", error);
-    res.status(500).json({ message: "Failed to update user profile" });
+    return res.status(500).json({ message: "Failed to save your plan", code: 'SERVER_ERROR' });
   }
 });
 
-// Generate AI Plan
-router.post("/generate-plan", ensureAuthenticated, async (req, res) => {
+/**
+ * Interpret a free-text goal without committing anything. Returns the mapped
+ * goal so the onboarding form can pre-select it; the user stays in control and
+ * still supplies the measurements themselves.
+ */
+router.post("/interpret-goal", ensureAuthenticated, async (req, res) => {
   try {
-    const { prompt, context } = req.body;
-    if (!prompt) {
-      return res.status(400).json({ message: "Prompt is required" });
-    }
+    const text = typeof req.body?.text === 'string' ? req.body.text.trim() : '';
+    if (!text) return res.status(400).json({ message: "Describe your goal first.", code: 'MISSING_TEXT' });
 
-    const existingProfile = await storage.getUserProfile(req.user!.id);
-    const userContext = {
-      ...existingProfile?.profile,
-      goal: existingProfile?.goal,
-      ...context
-    };
-
-    const aiPlan = await generatePersonalizedPlan(prompt, userContext);
-    res.json(aiPlan);
+    const interpreted = interpretGoalText(text);
+    return res.json({
+      interpretedGoal: interpreted,
+      // The form still collects measurements; the AI never fills them in.
+      requiresProfileData: true,
+      message: interpreted
+        ? `Understood — setting this up as a ${interpreted.replace(/_/g, ' ').toLowerCase()} plan.`
+        : "Couldn't map that to a specific goal — please pick the closest one below.",
+    });
   } catch (error) {
-    console.error("Error generating AI plan:", error);
-    res.status(500).json({ message: "Failed to generate AI plan" });
+    console.error("Error interpreting goal:", error);
+    return res.status(500).json({ message: "Failed to interpret goal" });
   }
 });
 

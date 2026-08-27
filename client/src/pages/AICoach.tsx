@@ -24,6 +24,7 @@ import {
   ArrowRight
 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
+import { usePlan } from '@/hooks/use-plan';
 
 interface Message {
   id: string;
@@ -92,11 +93,19 @@ export default function AICoach() {
     enabled: !!user?.id,
   });
 
-  // Fetch user's nutrition data for personalized recommendations
-  const { data: dailySummary } = useQuery<DailySummary>({
-    queryKey: ['/api/food-entries/daily'],
-    enabled: !!user?.id,
-  });
+  // Plan and today's intake come from the canonical dashboard payload, so the
+  // coach is reasoning about exactly the numbers the user sees elsewhere.
+  const { plan, today, remaining } = usePlan();
+
+  const dailySummary: DailySummary | undefined = today
+    ? {
+        totalCalories: Math.round(today.calories),
+        protein: Math.round(today.protein),
+        carbs: Math.round(today.carbs),
+        fat: Math.round(today.fat),
+        remainingCalories: plan ? Math.max(0, plan.targets.calories - Math.round(today.calories)) : 0,
+      }
+    : undefined;
 
   // Enhanced recommendations with more detailed information
   const enhancedRecommendations: Recommendation[] = [
@@ -226,6 +235,28 @@ export default function AICoach() {
             : 'flexible',
           equipment: userProfile?.workout?.equipment || [],
           workoutLocation: userProfile?.workout?.location || 'home',
+          // Real targets and real intake, so the coach never guesses numbers.
+          plan: plan
+            ? {
+                calorieTarget: plan.targets.calories,
+                proteinTarget: plan.targets.proteinGrams,
+                carbTarget: plan.targets.carbsGrams,
+                fatTarget: plan.targets.fatGrams,
+                waterTarget: plan.targets.waterMl,
+                primaryGoal: plan.goal.primaryGoal,
+                goalDescription: plan.goal.goalDescription,
+              }
+            : null,
+          todayIntake: today
+            ? {
+                calories: Math.round(today.calories),
+                protein: Math.round(today.protein),
+                carbs: Math.round(today.carbs),
+                fat: Math.round(today.fat),
+                waterMl: today.waterMl,
+              }
+            : null,
+          remaining: remaining ?? null,
         }
       });
       return response.json();

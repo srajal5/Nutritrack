@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
+import { usePlan } from '@/hooks/use-plan';
 import { FoodEntryDocument } from '@/types';
 import FoodEntryForm from '@/components/FoodEntryForm';
 import NutritionInsights from '@/components/NutritionInsights';
@@ -67,21 +68,40 @@ export default function Tracker() {
   const [selectedMeal, setSelectedMeal] = useState<string>('all');
   const [selectedDate, setSelectedDate] = useState(new Date());
 
-  // Fetch daily summary
-  const { data: dailySummary, isLoading: summaryLoading } = useQuery<DailySummary>({
-    queryKey: ['/api/food-entries/daily'],
-    enabled: !!user?.id,
-  });
+  // Targets and today's totals come from the canonical plan, the same object
+  // the Dashboard and Profile render. Tracker used to fetch /api/nutrition-goals
+  // separately and fall back to `|| 2000` / `|| 150`, which is how it could show
+  // different targets than the Dashboard for the same user.
+  const { plan, today, isLoading: planLoading } = usePlan();
+  const summaryLoading = planLoading;
+  const goalsLoading = planLoading;
+
+  const dailySummary: DailySummary | undefined = today
+    ? {
+        totalCalories: Math.round(today.calories),
+        protein: Math.round(today.protein),
+        carbs: Math.round(today.carbs),
+        fat: Math.round(today.fat),
+        fiber: Math.round(today.fiber),
+        sugar: Math.round(today.sugar),
+        remainingCalories: plan ? Math.max(0, plan.targets.calories - Math.round(today.calories)) : 0,
+      }
+    : undefined;
+
+  const nutritionGoals: NutritionGoals | undefined = plan
+    ? {
+        calorieGoal: plan.targets.calories,
+        proteinGoal: plan.targets.proteinGrams,
+        carbGoal: plan.targets.carbsGrams,
+        fatGoal: plan.targets.fatGrams,
+        fiberGoal: plan.targets.fiberGrams,
+        sugarGoal: 50,
+      }
+    : undefined;
 
   // Fetch weekly data
   const { data: weeklyData, isLoading: weeklyLoading } = useQuery<WeeklyData[]>({
     queryKey: ['/api/food-entries/weekly'],
-    enabled: !!user?.id,
-  });
-
-  // Fetch nutrition goals
-  const { data: nutritionGoals, isLoading: goalsLoading } = useQuery<NutritionGoals>({
-    queryKey: ['/api/nutrition-goals'],
     enabled: !!user?.id,
   });
 
@@ -280,11 +300,11 @@ export default function Tracker() {
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Calories</span>
                       <span className="text-foreground font-medium">
-                        {dailySummary?.totalCalories || 0} / {nutritionGoals?.calorieGoal || 2000}
+                        {dailySummary?.totalCalories || 0} / {nutritionGoals?.calorieGoal ?? '—'}
                       </span>
                     </div>
                     <Progress 
-                      value={getProgressPercentage(dailySummary?.totalCalories || 0, nutritionGoals?.calorieGoal || 2000)} 
+                      value={getProgressPercentage(dailySummary?.totalCalories || 0, nutritionGoals?.calorieGoal ?? 0)} 
                       className="h-3"
                     />
                     {dailySummary && nutritionGoals && (
@@ -331,7 +351,7 @@ export default function Tracker() {
                           </div>
                         </TooltipTrigger>
                         <TooltipContent>
-                          <p>Protein: {dailySummary?.protein || 0}g / {nutritionGoals?.proteinGoal || 150}g</p>
+                          <p>Protein: {dailySummary?.protein || 0}g / {nutritionGoals?.proteinGoal ?? '—'}g</p>
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
@@ -353,7 +373,7 @@ export default function Tracker() {
                           </div>
                         </TooltipTrigger>
                         <TooltipContent>
-                          <p>Carbohydrates: {dailySummary?.carbs || 0}g / {nutritionGoals?.carbGoal || 250}g</p>
+                          <p>Carbohydrates: {dailySummary?.carbs || 0}g / {nutritionGoals?.carbGoal ?? '—'}g</p>
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
@@ -375,7 +395,7 @@ export default function Tracker() {
                           </div>
                         </TooltipTrigger>
                         <TooltipContent>
-                          <p>Fat: {dailySummary?.fat || 0}g / {nutritionGoals?.fatGoal || 65}g</p>
+                          <p>Fat: {dailySummary?.fat || 0}g / {nutritionGoals?.fatGoal ?? '—'}g</p>
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
@@ -623,7 +643,7 @@ export default function Tracker() {
                             </span>
                           </div>
                           <Progress 
-                            value={getProgressPercentage(day.calories, nutritionGoals?.calorieGoal || 2000)} 
+                            value={getProgressPercentage(day.calories, nutritionGoals?.calorieGoal ?? 0)} 
                             className="h-2"
                           />
                         </div>
@@ -650,12 +670,12 @@ export default function Tracker() {
                   sugar: dailySummary?.sugar || 0,
                 }}
                 goals={{
-                  calorieGoal: nutritionGoals?.calorieGoal || 2000,
-                  proteinGoal: nutritionGoals?.proteinGoal || 150,
-                  carbGoal: nutritionGoals?.carbGoal || 250,
-                  fatGoal: nutritionGoals?.fatGoal || 70,
-                  fiberGoal: nutritionGoals?.fiberGoal || 25,
-                  sugarGoal: nutritionGoals?.sugarGoal || 50,
+                  calorieGoal: nutritionGoals?.calorieGoal ?? 0,
+                  proteinGoal: nutritionGoals?.proteinGoal ?? 0,
+                  carbGoal: nutritionGoals?.carbGoal ?? 0,
+                  fatGoal: nutritionGoals?.fatGoal ?? 0,
+                  fiberGoal: nutritionGoals?.fiberGoal ?? 0,
+                  sugarGoal: nutritionGoals?.sugarGoal ?? 0,
                 }}
                 weeklyData={weeklyData}
                 isLoading={summaryLoading || goalsLoading || weeklyLoading}

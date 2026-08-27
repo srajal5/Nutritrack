@@ -69,7 +69,7 @@ export default function Navbar() {
           <ThemeToggle />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="relative h-10 w-10 rounded-full border border-primary/20 bg-primary/5">
+              <Button variant="ghost" aria-label="Open user menu" className="relative h-10 w-10 rounded-full border border-primary/20 bg-primary/5">
                 <Avatar className="h-9 w-9">
                   <AvatarImage src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${user.username}`} alt="Avatar" />
                   <AvatarFallback>{user.username?.substring(0, 2).toUpperCase()}</AvatarFallback>

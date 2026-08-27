@@ -16,6 +16,7 @@ import {
   Droplet
 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { safePct, formatPct, hasUsableTargets } from '@shared/nutrition-math';
 
 interface NutritionData {
   calories: number;
@@ -60,8 +61,15 @@ const NutritionInsights = ({ dailyData, goals, weeklyData, isLoading = false }: 
 
     const newInsights: Insight[] = [];
 
+    // Without a persisted plan there is nothing to compare intake against.
+    // Dividing by a zero target previously rendered "NaN%" / "Infinity%".
+    if (!hasUsableTargets(goals)) {
+      setInsights([]);
+      return;
+    }
+
     // Calorie analysis
-    const caloriePercentage = (dailyData.calories / goals.calorieGoal) * 100;
+    const caloriePercentage = safePct(dailyData.calories, goals.calorieGoal) ?? 0;
     if (caloriePercentage < 70) {
       newInsights.push({
         type: 'warning',
@@ -91,7 +99,7 @@ const NutritionInsights = ({ dailyData, goals, weeklyData, isLoading = false }: 
     }
 
     // Protein analysis
-    const proteinPercentage = (dailyData.protein / goals.proteinGoal) * 100;
+    const proteinPercentage = safePct(dailyData.protein, goals.proteinGoal) ?? 0;
     if (proteinPercentage < 60) {
       newInsights.push({
         type: 'warning',
@@ -141,16 +149,16 @@ const NutritionInsights = ({ dailyData, goals, weeklyData, isLoading = false }: 
     }
 
     // Fiber analysis
-    if (dailyData.fiber < goals.fiberGoal) {
+    if (goals.fiberGoal > 0 && dailyData.fiber < goals.fiberGoal) {
       newInsights.push({
         type: 'suggestion',
         title: 'Low Fiber Intake',
-        description: `You've consumed ${Math.round((dailyData.fiber / goals.fiberGoal) * 100)}% of your fiber goal. Add more fruits, vegetables, and whole grains to reach ${goals.fiberGoal}g daily.`,
+        description: `You've consumed ${formatPct(dailyData.fiber, goals.fiberGoal)} of your fiber goal. Add more fruits, vegetables, and whole grains to reach ${goals.fiberGoal}g daily.`,
         icon: <Apple className="h-4 w-4" />,
         action: 'Add fiber-rich foods',
         priority: 3
       });
-    } else if (dailyData.fiber >= goals.fiberGoal) {
+    } else if (goals.fiberGoal > 0 && dailyData.fiber >= goals.fiberGoal) {
       newInsights.push({
         type: 'positive',
         title: 'Excellent Fiber Intake',
@@ -161,11 +169,11 @@ const NutritionInsights = ({ dailyData, goals, weeklyData, isLoading = false }: 
     }
 
     // Sugar analysis
-    if (dailyData.sugar > goals.sugarGoal) {
+    if (goals.sugarGoal > 0 && dailyData.sugar > goals.sugarGoal) {
       newInsights.push({
         type: 'warning',
         title: 'High Sugar Intake',
-        description: `You're ${Math.round(((dailyData.sugar - goals.sugarGoal) / goals.sugarGoal) * 100)}% over your recommended sugar limit. Try to limit added sugars.`,
+        description: `You're ${formatPct(dailyData.sugar - goals.sugarGoal, goals.sugarGoal)} over your recommended sugar limit. Try to limit added sugars.`,
         icon: <AlertTriangle className="h-4 w-4" />,
         action: 'Reduce sugar intake',
         priority: 2
@@ -173,7 +181,7 @@ const NutritionInsights = ({ dailyData, goals, weeklyData, isLoading = false }: 
     }
 
     // Weekly trend analysis
-    if (weeklyData && weeklyData.length >= 3) {
+    if (weeklyData && weeklyData.length >= 3 && goals.calorieGoal > 0) {
       const recentCalories = weeklyData.slice(-3).map(d => d.calories);
       const avgCalories = recentCalories.reduce((a, b) => a + b, 0) / recentCalories.length;
       
@@ -341,25 +349,25 @@ const NutritionInsights = ({ dailyData, goals, weeklyData, isLoading = false }: 
           <div className="grid grid-cols-2 gap-3">
             <div className="text-center p-2 rounded bg-muted/50">
               <div className="text-lg font-semibold text-foreground">
-                {Math.round((dailyData.calories / goals.calorieGoal) * 100)}%
+                {formatPct(dailyData.calories, goals.calorieGoal)}
               </div>
               <div className="text-xs text-muted-foreground">Calories</div>
             </div>
             <div className="text-center p-2 rounded bg-muted/50">
               <div className="text-lg font-semibold text-foreground">
-                {Math.round((dailyData.protein / goals.proteinGoal) * 100)}%
+                {formatPct(dailyData.protein, goals.proteinGoal)}
               </div>
               <div className="text-xs text-muted-foreground">Protein</div>
             </div>
             <div className="text-center p-2 rounded bg-muted/50">
               <div className="text-lg font-semibold text-foreground">
-                {Math.round((dailyData.fiber / goals.fiberGoal) * 100)}%
+                {formatPct(dailyData.fiber, goals.fiberGoal)}
               </div>
               <div className="text-xs text-muted-foreground">Fiber</div>
             </div>
             <div className="text-center p-2 rounded bg-muted/50">
               <div className="text-lg font-semibold text-foreground">
-                {Math.round((dailyData.sugar / goals.sugarGoal) * 100)}%
+                {formatPct(dailyData.sugar, goals.sugarGoal)}
               </div>
               <div className="text-xs text-muted-foreground">Sugar</div>
             </div>

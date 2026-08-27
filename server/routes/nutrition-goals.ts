@@ -15,14 +15,12 @@ router.get('/', ensureAuthenticated, async (req, res) => {
 
     const goals = await storage.getNutritionGoalByUserId(userId);
     if (!goals) {
-      // Return default goals if none set
-      return res.json({
-        calorieGoal: 2100,
-        proteinGoal: 120,
-        carbGoal: 230,
-        fatGoal: 70,
-        fiberGoal: 25,
-        sugarGoal: 50
+      // No invented defaults. Handing back 2100/120/230/70 here is what made
+      // unrelated users look identical; the client shows a "finish your plan"
+      // prompt instead.
+      return res.status(404).json({
+        message: 'No nutrition plan yet. Complete onboarding to generate one.',
+        code: 'NO_PLAN',
       });
     }
 

@@ -25,7 +25,11 @@ export const AuthContext = createContext<AuthContextType | null>(null);
  * Drop every cached query and seed the freshly authenticated user. Clearing is
  * what stops one account's entries/goals/stats from showing up for the next.
  */
-function resetCacheForUser(user: SelectUser | null) {
+async function resetCacheForUser(user: SelectUser | null) {
+  // Requests already in flight from the previous session can resolve AFTER the
+  // new session is established. A late 401 would then overwrite the freshly
+  // logged-in user with null and bounce them back to /auth, so cancel first.
+  await queryClient.cancelQueries();
   queryClient.clear();
   queryClient.setQueryData(["/api/user"], user);
 }
@@ -55,15 +59,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       return data.user as SelectUser;
     },
-    onSuccess: (loggedInUser: SelectUser) => {
-      resetCacheForUser(loggedInUser);
+    onSuccess: async (loggedInUser: SelectUser) => {
+      await resetCacheForUser(loggedInUser);
       toast({
         title: "Login successful",
         description: "Welcome back!",
       });
     },
-    onError: (err: Error) => {
-      resetCacheForUser(null);
+    onError: async (err: Error) => {
+      await resetCacheForUser(null);
       toast({
         title: "Login failed",
         description: err.message,
@@ -84,8 +88,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       return data.user as SelectUser;
     },
-    onSuccess: (newUser: SelectUser) => {
-      resetCacheForUser(newUser);
+    onSuccess: async (newUser: SelectUser) => {
+      await resetCacheForUser(newUser);
       toast({
         title: "Registration successful",
         description: "Welcome to NutriTrack!",
@@ -104,17 +108,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     mutationFn: async () => {
       await apiRequest("POST", "/api/logout");
     },
-    onSuccess: () => {
-      resetCacheForUser(null);
+    onSuccess: async () => {
+      await resetCacheForUser(null);
       toast({
         title: "Logged out",
         description: "You have been logged out successfully",
       });
     },
-    onError: (err: Error) => {
+    onError: async (err: Error) => {
       // The server session is likely gone either way — clear locally so the
       // user is not stuck in a half-authenticated UI.
-      resetCacheForUser(null);
+      await resetCacheForUser(null);
       toast({
         title: "Logout failed",
         description: err.message,

@@ -78,7 +78,16 @@ export async function setupVite(app: Express, server: Server) {
         .set({ 
           "Content-Type": "text/html",
           "X-Content-Type-Options": "nosniff",
-          "Content-Security-Policy": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:;"
+          // Fonts and the avatar service are third-party by design; without them the
+          // app renders with fallback fonts and blank avatars.
+          "Content-Security-Policy": [
+            "default-src 'self'",
+            "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+            "font-src 'self' data: https://fonts.gstatic.com",
+            "img-src 'self' data: blob: https://api.dicebear.com",
+            "connect-src 'self' ws: wss:",
+          ].join('; ')
         })
         .end(page);
     } catch (e) {

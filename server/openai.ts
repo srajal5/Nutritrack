@@ -140,6 +140,25 @@ async function callWithFallback(params: any): Promise<string> {
   }
 }
 
+/**
+ * Reusable structured-output call. Returns parsed JSON from the model, using
+ * the existing primary/fallback model chain and JSON extraction. Throws if the
+ * model is unreachable or the output is not parseable JSON — callers are
+ * expected to fall back to deterministic behaviour.
+ */
+export async function callAIJson(prompt: string, systemMessage: string): Promise<unknown> {
+  const content = await callWithFallback({
+    messages: [
+      { role: 'system', content: systemMessage },
+      { role: 'user', content: prompt },
+    ],
+    temperature: 0.4,
+    max_tokens: 700,
+    response_format: { type: 'json_object' },
+  });
+  return safeJsonParse(content);
+}
+
 // Enhanced system message for better fitness coaching
 const ENHANCED_FITNESS_SYSTEM_MESSAGE = `You are an expert fitness and nutrition coach with deep knowledge of exercise science, nutrition, and behavior change. Your role is to provide:
 

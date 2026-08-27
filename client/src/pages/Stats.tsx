@@ -1,4 +1,7 @@
 import { useState } from 'react';
+import { Link } from 'wouter';
+import { ApiError } from '@/lib/queryClient';
+import { barPct } from '@shared/nutrition-math';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useQuery } from '@tanstack/react-query';
@@ -60,6 +63,19 @@ export default function Stats() {
     return (
       <div className="min-h-screen flex items-center justify-center gradient-bg">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  // A user with no plan gets a route to fix it, not a dead-end error screen.
+  if (error instanceof ApiError && error.code === "NO_PLAN") {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center gradient-bg gap-4 px-4 text-center">
+        <p className="text-lg font-medium text-foreground">No stats yet</p>
+        <p className="text-muted-foreground text-sm max-w-sm">
+          Your stats are measured against your personalized plan. Build the plan first and this page fills in.
+        </p>
+        <Link href="/onboarding" className="btn btn-primary btn-sm">Build my plan</Link>
       </div>
     );
   }
@@ -352,12 +368,16 @@ export default function Stats() {
                   </CardHeader>
                   <CardContent className="space-y-6">
                     {[
-                      { name: 'Calories', metric: 'calories', target: goals.find(g => g.name === 'Daily Calories')?.target || 2000, unit: 'cal', color: 'bg-orange-500' },
-                      { name: 'Protein', metric: 'protein', target: goals.find(g => g.name === 'Protein Intake')?.target || 150, unit: 'g', color: 'bg-blue-500' },
-                      { name: 'Carbs', metric: 'carbs', target: goals.find(g => g.name === 'Carbs Target')?.target || 250, unit: 'g', color: 'bg-green-500' },
-                      { name: 'Fat', metric: 'fat', target: goals.find(g => g.name === 'Fat Limit')?.target || 65, unit: 'g', color: 'bg-yellow-500' },
-                      { name: 'Fiber', metric: 'fiber', target: goals.find(g => g.name === 'Fiber Goal')?.target || 25, unit: 'g', color: 'bg-purple-500' },
-                      { name: 'Sugar', metric: 'sugar', target: goals.find(g => g.name === 'Sugar Limit')?.target || 50, unit: 'g', color: 'bg-pink-500' },
+                      // Targets come from /api/stats, which derives them from the
+                      // persisted plan. No stand-in values: a missing target
+                      // renders as 0 and the row shows "—" rather than a number
+                      // that was never calculated for this user.
+                      { name: 'Calories', metric: 'calories', target: goals.find(g => g.name === 'Daily Calories')?.target ?? 0, unit: 'cal', color: 'bg-orange-500' },
+                      { name: 'Protein', metric: 'protein', target: goals.find(g => g.name === 'Protein Intake')?.target ?? 0, unit: 'g', color: 'bg-blue-500' },
+                      { name: 'Carbs', metric: 'carbs', target: goals.find(g => g.name === 'Carbs Target')?.target ?? 0, unit: 'g', color: 'bg-green-500' },
+                      { name: 'Fat', metric: 'fat', target: goals.find(g => g.name === 'Fat Limit')?.target ?? 0, unit: 'g', color: 'bg-yellow-500' },
+                      { name: 'Fiber', metric: 'fiber', target: goals.find(g => g.name === 'Fiber Goal')?.target ?? 0, unit: 'g', color: 'bg-purple-500' },
+                      { name: 'Sugar', metric: 'sugar', target: goals.find(g => g.name === 'Sugar Limit')?.target ?? 0, unit: 'g', color: 'bg-pink-500' },
                     ].map((item, index) => {
                       const current = getCurrentValue(item.metric);
                       const percentage = Math.min((current / item.target) * 100, 100);
@@ -392,8 +412,10 @@ export default function Stats() {
                   <CardContent>
                     <div className="space-y-4">
                       {nutritionData.slice(-4).reverse().map((item, index) => {
-                        const dayGoal = goals.find(g => g.name === 'Daily Calories')?.target || 2000;
-                        const percentage = Math.min((item.calories / dayGoal) * 100, 100);
+                        const dayGoal = goals.find(g => g.name === 'Daily Calories')?.target ?? 0;
+                        // barPct guards the divide-by-zero that would otherwise
+                        // render NaN when no target exists.
+                        const percentage = barPct(item.calories, dayGoal);
                         
                         return (
                           <div key={index} className="flex items-center justify-between">

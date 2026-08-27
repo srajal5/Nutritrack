@@ -41,8 +41,10 @@ export function ProtectedRoute({
     );
   }
 
-  // Redirect to onboarding if not completed and not already on the onboarding page
-  const needsOnboarding = profile === null || (profile && !profile.isCompleted);
+  // The gate is whether a usable plan exists, not merely an isCompleted flag.
+  // A profile can be marked complete yet hold no plan, and the dashboard has
+  // nothing real to show in that case.
+  const needsOnboarding = !profile?.resolvedPlan;
   if (needsOnboarding && path !== "/onboarding") {
     return (
       <Route path={path}>

@@ -22,6 +22,9 @@ export default defineConfig({
     alias: {
       "@": path.resolve(import.meta.dirname, "client", "src"),
       "@assets": path.resolve(import.meta.dirname, "attached_assets"),
+      // Client and server share one set of domain types, so the dashboard and
+      // the API can never drift apart on the shape of a plan.
+      "@shared": path.resolve(import.meta.dirname, "shared"),
     },
   },
   root: path.resolve(import.meta.dirname, "client"),

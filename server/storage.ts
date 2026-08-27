@@ -21,6 +21,8 @@ export interface FoodEntryDocument extends mongoose.Document {
   description?: string;
   servingSize: string;
   mealType: string;
+  /** Millilitres of water, for entries logged as hydration. */
+  waterMl?: number;
   calories?: number;
   protein?: number;
   carbs?: number;
@@ -58,6 +60,15 @@ export interface NutritionGoalDocument extends mongoose.Document {
   updatedAt: Date;
 }
 
+export interface WeightEntryDocument extends mongoose.Document {
+  id: number;
+  userId: number;
+  weightKg: number;
+  recordedAt: Date;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export interface UserProfileDocument extends mongoose.Document {
   id: number;
   userId: number;
@@ -65,6 +76,7 @@ export interface UserProfileDocument extends mongoose.Document {
   profile: {
     age?: number;
     gender?: string;
+    biologicalSex?: string;
     heightCm?: number;
     weightKg?: number;
     targetWeightKg?: number;
@@ -76,6 +88,8 @@ export interface UserProfileDocument extends mongoose.Document {
     secondaryGoals?: string[];
     targetDate?: Date;
     desiredOutcome?: string;
+    goalDescription?: string;
+    targetTimelineWeeks?: number;
   };
   workout: {
     daysPerWeek?: number;
@@ -87,8 +101,31 @@ export interface UserProfileDocument extends mongoose.Document {
     allergies?: string[];
     dislikedFoods?: string[];
     preferredFoods?: string[];
+    mealsPerDay?: number;
     calorieTarget?: number;
     proteinTarget?: number;
+  };
+  plan?: {
+    planVersion?: number;
+    generatedAt?: Date;
+    targets?: {
+      calories?: number;
+      proteinGrams?: number;
+      carbsGrams?: number;
+      fatGrams?: number;
+      fiberGrams?: number;
+      waterMl?: number;
+    };
+    basis?: {
+      bmr?: number;
+      tdee?: number;
+      goalAdjustment?: number;
+      proteinGramsPerKg?: number;
+    };
+    aiSummary?: string;
+    focusAreas?: string[];
+    weeklyWorkoutPlan?: string[];
+    nutritionGuidelines?: string[];
   };
   aiPlan: {
     summary?: string;
@@ -145,6 +182,7 @@ const foodEntrySchema = new mongoose.Schema<FoodEntryDocument>({
   description: { type: String },
   servingSize: { type: String, required: true },
   mealType: { type: String, required: true },
+  waterMl: { type: Number },
   calories: { type: Number },
   protein: { type: Number },
   carbs: { type: Number },
@@ -184,7 +222,10 @@ const userProfileSchema = new mongoose.Schema<UserProfileDocument>({
   isCompleted: { type: Boolean, default: false },
   profile: {
     age: Number,
+    // `gender` is the legacy field name; biologicalSex is what the calculator
+    // reads. Both are written so older records stay readable.
     gender: String,
+    biologicalSex: String,
     heightCm: Number,
     weightKg: Number,
     targetWeightKg: Number,
@@ -196,6 +237,9 @@ const userProfileSchema = new mongoose.Schema<UserProfileDocument>({
     secondaryGoals: [String],
     targetDate: Date,
     desiredOutcome: String,
+    /** The user's own wording, preserved verbatim. */
+    goalDescription: String,
+    targetTimelineWeeks: Number,
   },
   workout: {
     daysPerWeek: Number,
@@ -207,8 +251,35 @@ const userProfileSchema = new mongoose.Schema<UserProfileDocument>({
     allergies: [String],
     dislikedFoods: [String],
     preferredFoods: [String],
+    mealsPerDay: Number,
     calorieTarget: Number,
     proteinTarget: Number,
+  },
+  /**
+   * The persisted personalized plan — the single source of truth the dashboard,
+   * profile page and AI all read from. Written only after validation succeeds.
+   */
+  plan: {
+    planVersion: Number,
+    generatedAt: Date,
+    targets: {
+      calories: Number,
+      proteinGrams: Number,
+      carbsGrams: Number,
+      fatGrams: Number,
+      fiberGrams: Number,
+      waterMl: Number,
+    },
+    basis: {
+      bmr: Number,
+      tdee: Number,
+      goalAdjustment: Number,
+      proteinGramsPerKg: Number,
+    },
+    aiSummary: String,
+    focusAreas: [String],
+    weeklyWorkoutPlan: [String],
+    nutritionGuidelines: [String],
   },
   aiPlan: {
     summary: String,
@@ -225,6 +296,16 @@ const FoodEntry = mongoose.model<FoodEntryDocument>('FoodEntry', foodEntrySchema
 const ChatMessage = mongoose.model<ChatMessageDocument>('ChatMessage', chatMessageSchema);
 const NutritionGoal = mongoose.model<NutritionGoalDocument>('NutritionGoal', nutritionGoalSchema);
 const UserProfile = mongoose.model<UserProfileDocument>('UserProfile', userProfileSchema);
+
+/** Real weight measurements. The progress trend is drawn from these only. */
+const weightEntrySchema = new mongoose.Schema<WeightEntryDocument>({
+  id: { type: Number, required: true, unique: true },
+  userId: { type: Number, required: true, index: true },
+  weightKg: { type: Number, required: true },
+  recordedAt: { type: Date, required: true, default: Date.now },
+}, { timestamps: true });
+
+const WeightEntry = mongoose.model<WeightEntryDocument>('WeightEntry', weightEntrySchema);
 
 // Storage interface
 interface IStorage {
@@ -322,6 +403,19 @@ class Storage implements IStorage {
 
   async getUserProfile(userId: number): Promise<UserProfileDocument | null> {
     return await UserProfile.findOne({ userId });
+  }
+
+  // Weight history operations
+  async addWeightEntry(userId: number, weightKg: number, recordedAt?: Date): Promise<WeightEntryDocument> {
+    const last = await WeightEntry.findOne().sort({ id: -1 });
+    const newId = last ? last.id + 1 : 1;
+    const entry = new WeightEntry({ id: newId, userId, weightKg, recordedAt: recordedAt || new Date() });
+    return await entry.save();
+  }
+
+  /** Most recent first. Scoped to the authenticated user by the caller. */
+  async getWeightEntries(userId: number, limit = 60): Promise<WeightEntryDocument[]> {
+    return await WeightEntry.find({ userId }).sort({ recordedAt: -1 }).limit(limit);
   }
 
   async updateUserProfile(userId: number, profileData: Partial<UserProfileInput>): Promise<UserProfileDocument> {

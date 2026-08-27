@@ -50,7 +50,11 @@ router.get('/daily', ensureAuthenticated, async (req, res) => {
       fat: todaysEntries.reduce((sum: number, entry: FoodEntryDocument) => sum + (entry.fat || 0), 0),
       fiber: todaysEntries.reduce((sum: number, entry: FoodEntryDocument) => sum + (entry.fiber || 0), 0),
       sugar: todaysEntries.reduce((sum: number, entry: FoodEntryDocument) => sum + (entry.sugar || 0), 0),
-      remainingCalories: (nutritionGoal?.calorieGoal || 2000) - todaysEntries.reduce((sum: number, entry: FoodEntryDocument) => sum + (entry.calories || 0), 0)
+      // null, not a stand-in target, when the user has no plan yet.
+      calorieGoal: nutritionGoal?.calorieGoal ?? null,
+      remainingCalories: nutritionGoal?.calorieGoal
+        ? nutritionGoal.calorieGoal - todaysEntries.reduce((sum: number, entry: FoodEntryDocument) => sum + (entry.calories || 0), 0)
+        : null
     };
 
     res.json(summary);
@@ -80,25 +84,32 @@ router.get('/weekly', ensureAuthenticated, async (req, res) => {
       return entryDate >= startOfWeek && entryDate <= today;
     });
 
-    // Group entries by date
-    const dailyCalories = new Array(7).fill(0);
+    // Group entries by CALENDAR day, not by elapsed milliseconds. The previous
+    // arithmetic bucketed a meal eaten late yesterday into today whenever less
+    // than 24h had passed, so daily totals could land on the wrong bar.
     const now = new Date();
+    const dayKeys: string[] = [];
+    const dayStarts: Date[] = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i);
+      dayStarts.push(d);
+      dayKeys.push(`${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`);
+    }
+
+    const dailyCalories = new Array(7).fill(0);
     weeklyEntries.forEach((entry: FoodEntryDocument) => {
-      const entryDate = new Date(entry.entryDate || entry.createdAt);
-      const dayIndex = 6 - Math.floor((now.getTime() - entryDate.getTime()) / (24 * 60 * 60 * 1000));
-      if (dayIndex >= 0 && dayIndex < 7) {
-        dailyCalories[dayIndex] += entry.calories || 0;
+      const e = new Date(entry.entryDate || entry.createdAt);
+      const key = `${e.getFullYear()}-${e.getMonth()}-${e.getDate()}`;
+      const idx = dayKeys.indexOf(key);
+      if (idx !== -1) {
+        dailyCalories[idx] += entry.calories || 0;
       }
     });
 
-    const weeklyData = dailyCalories.map((calories, index) => {
-      const date = new Date(now);
-      date.setDate(now.getDate() - (6 - index));
-      return {
-        date: date.toISOString(),
-        calories
-      };
-    });
+    const weeklyData = dailyCalories.map((calories, index) => ({
+      date: dayStarts[index].toISOString(),
+      calories,
+    }));
 
     res.json(weeklyData);
   } catch (error) {
@@ -268,6 +279,42 @@ router.delete('/:id', ensureAuthenticated, async (req, res) => {
   } catch (error) {
     console.error('Error deleting food entry:', error);
     res.status(500).json({ error: 'Failed to delete food entry' });
+  }
+});
+
+/**
+ * Log water. Stored as a normal entry with a waterMl amount so hydration shares
+ * the same history, streak and daily-rollup logic as food.
+ */
+router.post('/water', ensureAuthenticated, async (req, res) => {
+  try {
+    const userId = req.user!.id;
+    const amountMl = Number(req.body?.amountMl);
+
+    if (!Number.isFinite(amountMl) || amountMl <= 0 || amountMl > 5000) {
+      return res.status(400).json({
+        message: 'Enter a water amount between 1 and 5000 ml.',
+        code: 'INVALID_AMOUNT',
+      });
+    }
+
+    const entry = await storage.createFoodEntry({
+      userId,
+      name: 'Water',
+      servingSize: `${amountMl} ml`,
+      mealType: 'water',
+      waterMl: Math.round(amountMl),
+      calories: 0,
+      protein: 0,
+      carbs: 0,
+      fat: 0,
+      entryDate: new Date(),
+    } as any);
+
+    res.status(201).json(entry);
+  } catch (error) {
+    console.error('Error logging water:', error);
+    res.status(500).json({ message: 'Failed to log water' });
   }
 });
 

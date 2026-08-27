@@ -3,12 +3,15 @@ import { QueryClient, QueryFunction } from "@tanstack/react-query";
 export class ApiError extends Error {
   status: number;
   code?: string;
+  /** Field paths the server reported as missing or invalid, when it sent any. */
+  missingFields: string[];
 
-  constructor(status: number, message: string, code?: string) {
+  constructor(status: number, message: string, code?: string, missingFields: string[] = []) {
     super(message);
     this.name = "ApiError";
     this.status = status;
     this.code = code;
+    this.missingFields = missingFields;
   }
 }
 
@@ -18,14 +21,18 @@ export class ApiError extends Error {
  * functions as { error: { code, message } }. Reading `.error` straight into an
  * Error rendered as the literal text "[object Object]", hiding the real cause.
  */
-function extractMessage(value: unknown): { message: string; code?: string } {
+function extractMessage(value: unknown): { message: string; code?: string; missingFields?: string[] } {
   if (typeof value === "string") return { message: value };
   if (!value || typeof value !== "object") return { message: "" };
 
   const obj = value as Record<string, unknown>;
 
   if (typeof obj.message === "string" && obj.message) {
-    return { message: obj.message, code: typeof obj.code === "string" ? obj.code : undefined };
+    return {
+      message: obj.message,
+      code: typeof obj.code === "string" ? obj.code : undefined,
+      missingFields: Array.isArray(obj.missingFields) ? (obj.missingFields as string[]) : undefined,
+    };
   }
 
   // Nested envelopes: { error: "..." } or { error: { code, message } }.
@@ -47,6 +54,7 @@ async function throwIfResNotOk(res: Response) {
 
   let message = "";
   let code: string | undefined;
+  let missingFields: string[] = [];
 
   const raw = await res.text().catch(() => "");
   if (raw) {
@@ -54,6 +62,7 @@ async function throwIfResNotOk(res: Response) {
       const extracted = extractMessage(JSON.parse(raw));
       message = extracted.message;
       code = extracted.code;
+      missingFields = extracted.missingFields ?? [];
     } catch {
       // Non-JSON body (an HTML error page, for instance) — ignore the markup.
     }
@@ -72,7 +81,7 @@ async function throwIfResNotOk(res: Response) {
     if (requestId) message += ` [ref: ${requestId}]`;
   }
 
-  throw new ApiError(res.status, message, code);
+  throw new ApiError(res.status, message, code, missingFields);
 }
 
 export const apiRequest = async (

@@ -62,7 +62,9 @@ export default function Profile() {
     }
   };
 
-  const primaryGoal = userProfile?.goal?.primaryGoal || 'Not set';
+  // Exactly the object the dashboard renders, so the two pages cannot disagree.
+  const plan = userProfile?.resolvedPlan ?? null;
+  const primaryGoal = plan?.goal?.primaryGoal || userProfile?.goal?.primaryGoal || 'Not set';
   const goalFormatted = primaryGoal.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase());
 
   return (
@@ -109,7 +111,7 @@ export default function Profile() {
                 <Sparkles className="w-4 h-4" /> Calorie Target
               </div>
               <p className="text-lg font-bold text-foreground">
-                {userProfile?.nutrition?.calorieTarget || 2000} kcal/day
+                {plan ? `${plan.targets.calories} kcal/day` : "Not set"}
               </p>
             </div>
 
@@ -118,15 +120,24 @@ export default function Profile() {
                 <Dumbbell className="w-4 h-4" /> Protein Target
               </div>
               <p className="text-lg font-bold text-foreground">
-                {userProfile?.nutrition?.proteinTarget || 140} g/day
+                {plan ? `${plan.targets.proteinGrams} g/day` : "Not set"}
               </p>
             </div>
           </div>
 
-          {userProfile?.aiPlan?.summary && (
+          {!plan && (
+            <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 mt-2">
+              <p className="text-sm text-foreground">
+                Your personalized plan isn't set up yet, so no targets are shown.{" "}
+                <a href="/onboarding" className="text-primary font-medium underline">Build my plan</a>
+              </p>
+            </div>
+          )}
+
+          {plan?.aiSummary && (
             <div className="p-4 rounded-2xl bg-primary/10 border border-primary/20 mt-2">
               <p className="text-xs font-semibold text-primary uppercase tracking-wider mb-1">AI Coach Summary</p>
-              <p className="text-sm text-foreground">{userProfile.aiPlan.summary}</p>
+              <p className="text-sm text-foreground">{plan.aiSummary}</p>
             </div>
           )}
         </CardContent>
