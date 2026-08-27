@@ -108,7 +108,44 @@ async function health(res: any) {
   res.end(JSON.stringify({ ok, checks }, null, 2));
 }
 
+/**
+ * Reconstructs the original request path.
+ *
+ * ROOT CAUSE THIS SOLVES: the function used to live at `api/[...slug].ts` and
+ * relied on Vercel's filesystem matching. In practice that matched only ONE
+ * segment after /api, so `/api/user-profile` resolved but `/api/dashboard/22`
+ * and `/api/food-entries/weekly` returned Vercel's own 404 before Express ever
+ * ran. That is why Profile worked in production while the Dashboard did not,
+ * and why localhost (plain Express, no such routing layer) was unaffected.
+ *
+ * Every /api path is now rewritten to this one function with the original path
+ * carried in `__apiPath`, so routing no longer depends on how the platform
+ * interprets a catch-all filename.
+ */
+function resolveRequestPath(req: any): string {
+  const raw: string = req.url || '/';
+  const rawQuery = raw.split('?')[1] ?? '';
+  const params = new URLSearchParams(rawQuery);
+  const forwarded = params.get('__apiPath');
+
+  if (forwarded === null) {
+    // Direct invocation (local dev, or a platform that preserved the path).
+    return raw;
+  }
+
+  // `__apiPath` is our own routing detail and must not reach the route handlers.
+  params.delete('__apiPath');
+  const rest = params.toString();
+
+  // An empty __apiPath means the request was for /api itself.
+  const path = forwarded ? `/api/${forwarded}` : '/api';
+  return rest ? `${path}?${rest}` : path;
+}
+
 export default async function handler(req: any, res: any) {
+  // Normalise before anything reads req.url, including Express' own router.
+  req.url = resolveRequestPath(req);
+
   const path = (req.url || '').split('?')[0];
   if (path === '/api/health' || path === '/health') {
     return health(res);

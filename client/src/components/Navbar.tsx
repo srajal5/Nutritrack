@@ -36,7 +36,7 @@ export default function Navbar() {
   ];
 
   return (
-    <div className="sticky top-0 z-50 w-full backdrop-blur-md bg-background/80 border-b border-border shadow-sm">
+    <nav aria-label="Main navigation" className="sticky top-0 z-50 w-full backdrop-blur-md bg-background/80 border-b border-border shadow-sm">
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
         
         {/* Desktop & Mobile Header Title */}
@@ -110,6 +110,6 @@ export default function Navbar() {
           </DropdownMenu>
         </div>
       </div>
-    </div>
+    </nav>
   );
 }

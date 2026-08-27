@@ -2,9 +2,22 @@ import { useState } from 'react';
 import { Link } from 'wouter';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { useAuth } from '@/hooks/use-auth';
 
+/**
+ * Public (signed-out) site navigation.
+ *
+ * Navbar — the authenticated navigation — is mounted globally in App and gates
+ * itself with `if (!user) return null`. This header had no matching gate, so a
+ * signed-in user visiting the landing page saw BOTH navigation bars stacked.
+ * Each navigation now declares its own audience, so exactly one ever renders.
+ */
 const Header = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { user } = useAuth();
+
+  // Authenticated users get Navbar instead.
+  if (user) return null;
 
   return (
     <header className="sticky top-0 glass border-b border-border shadow-sm z-10 theme-transition">

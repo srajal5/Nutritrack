@@ -173,6 +173,37 @@ try {
   check('fat tile percentage derives from the persisted 75g target', /69%/.test(tracker));
   check('tracker does not fall back to 2000/150/250', !/\/\s*2000\b/.test(tracker));
 
+  console.log('\n=== Exactly one navigation bar renders ===');
+  {
+    // Signed in, on the landing page: only the authenticated Navbar.
+    await page.goto(`${BASE}/`, { waitUntil: 'networkidle' });
+    await page.waitForTimeout(1500);
+    await shot(page, 'c04-home-signed-in');
+    const navCount = await page.locator('nav[aria-label="Main navigation"], header').count();
+    const homeText = await page.locator('body').innerText();
+    check('signed-in landing page shows the authenticated nav',
+      /Dashboard/.test(homeText) && /Log Food/.test(homeText));
+    check('signed-in landing page does NOT also show the public nav (no Sign In)',
+      !/Sign In/.test(homeText), homeText.slice(0, 160).replace(/\n/g, ' '));
+    check('only one navigation bar is mounted', navCount === 1, `found ${navCount}`);
+  }
+
+  {
+    // Signed out: only the public Header.
+    const anon = await browser.newContext({ viewport: { width: 1440, height: 900 }, extraHTTPHeaders: EXTRA_HEADERS });
+    const anonPage = await anon.newPage();
+    await anonPage.goto(`${BASE}/`, { waitUntil: 'networkidle' });
+    await anonPage.waitForTimeout(1500);
+    await shot(anonPage, 'c05-home-signed-out');
+    const anonText = await anonPage.locator('body').innerText();
+    const anonNavCount = await anonPage.locator('nav[aria-label="Main navigation"], header').count();
+    check('signed-out landing page shows the public nav', /Sign In/.test(anonText));
+    check('signed-out landing page does NOT show the authenticated nav',
+      !/Log Food/.test(anonText), anonText.slice(0, 160).replace(/\n/g, ' '));
+    check('only one navigation bar when signed out', anonNavCount === 1, `found ${anonNavCount}`);
+    await anon.close();
+  }
+
   console.log('\n=== Incomplete profile gets NO fabricated plan ===');
   const ctx2 = await browser.newContext({ viewport: { width: 1440, height: 1000 }, extraHTTPHeaders: EXTRA_HEADERS });
   const page2 = await ctx2.newPage();

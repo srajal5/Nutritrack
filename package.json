@@ -8,7 +8,7 @@
     "build": "vite build && tsc && esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist/server",
     "start": "node dist/server/index.js",
     "check": "tsc --noEmit",
-    "test": "tsx server/nutrition-calculator.test.ts && tsx server/food-suggestion-service.test.ts && tsx server/ai-enrichment.test.ts && tsx shared/nutrition-math.test.ts",
+    "test": "tsx server/nutrition-calculator.test.ts && tsx server/food-suggestion-service.test.ts && tsx server/ai-enrichment.test.ts && tsx shared/nutrition-math.test.ts && tsx api/path-resolution.test.ts",
     "diagnose": "tsx server/diagnose-profiles.ts",
     "test:browser": "node tests/browser-journey.mjs",
     "preview": "vite preview --port 4173",
