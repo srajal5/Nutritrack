@@ -54,11 +54,17 @@ export default function Navbar() {
             const Icon = link.icon;
             const isActive = location === link.href;
             return (
-              <Link key={link.href} href={link.href}>
-                <a className={`btn btn-sm btn-ghost gap-2 px-3 flex flex-nowrap whitespace-nowrap items-center ${isActive ? 'bg-primary/10 text-primary' : 'text-muted-foreground'}`}>
-                  <Icon className="w-4 h-4" />
-                  {link.label}
-                </a>
+              // wouter's <Link> renders its own <a>; wrapping another anchor
+              // inside produced invalid nested <a><a> markup (React's
+              // validateDOMNesting warning seen in production).
+              <Link
+                key={link.href}
+                href={link.href}
+                aria-current={isActive ? 'page' : undefined}
+                className={`btn btn-sm btn-ghost gap-2 px-3 flex flex-nowrap whitespace-nowrap items-center ${isActive ? 'bg-primary/10 text-primary' : 'text-muted-foreground'}`}
+              >
+                <Icon className="w-4 h-4" />
+                {link.label}
               </Link>
             );
           })}

@@ -37,6 +37,21 @@ async function dismissCookieBanner(page) {
   }
 }
 
+/**
+ * Waits until `read()` satisfies `ok()`, or fails after `timeout`.
+ * Used instead of fixed sleeps so assertions stay strict on a slow network.
+ */
+async function waitFor(read, ok, { timeout = 25000, interval = 500 } = {}) {
+  const started = Date.now();
+  let last;
+  while (Date.now() - started < timeout) {
+    last = await read();
+    if (ok(last)) return last;
+    await new Promise((r) => setTimeout(r, interval));
+  }
+  return last;
+}
+
 async function shot(page, name) {
   if (SHOTS) await page.screenshot({ path: `${SHOTS}/${name}.png`, fullPage: true }).catch(() => {});
 }
@@ -171,8 +186,9 @@ try {
   console.log('\n=== 5. Log water from the dashboard, no reload ===');
   const beforeWater = a.text.match(/([\d.]+)L\s*\/\s*([\d.]+)L/)?.[1];
   await page.getByRole('button', { name: /Log 500 millilitres of water/i }).click();
-  await page.waitForTimeout(2500);
-  const afterWaterText = await page.locator('main').first().innerText();
+  const afterWaterText = await waitFor(
+    () => page.locator('main').first().innerText(),
+    (t) => Number(t.match(/([\d.]+)L\s*\/\s*([\d.]+)L/)?.[1]) > Number(beforeWater));
   const afterWater = afterWaterText.match(/([\d.]+)L\s*\/\s*([\d.]+)L/)?.[1];
   check('water total increased without a page reload',
     Number(afterWater) > Number(beforeWater), `${beforeWater} -> ${afterWater}`);
@@ -184,8 +200,9 @@ try {
   const confirmVisible = await page.getByRole('button', { name: /Confirm & log/i }).isVisible();
   check('estimates require explicit confirmation before logging', confirmVisible);
   await page.getByRole('button', { name: /Confirm & log/i }).click();
-  await page.waitForTimeout(3000);
-  const afterMealText = await page.locator('main').first().innerText();
+  const afterMealText = await waitFor(
+    () => page.locator('main').first().innerText(),
+    (t) => Number(t.match(/([\d,]+)\s*\/\s*[\d,]+\s*kcal/)?.[1].replace(/,/g, '')) > beforeCals);
   const afterCals = Number(afterMealText.match(/([\d,]+)\s*\/\s*[\d,]+\s*kcal/)?.[1].replace(/,/g, ''));
   check('calories increased after logging', afterCals > beforeCals, `${beforeCals} -> ${afterCals}`);
   check('meal appears in Recent Meals', /Recent Meals/i.test(afterMealText) && !/No meals logged today/i.test(afterMealText));
@@ -194,8 +211,9 @@ try {
   console.log('\n=== 7. Record a weight measurement ===');
   await page.locator('#weight-input').fill('66.5');
   await page.getByRole('button', { name: /save weight/i }).click();
-  await page.waitForTimeout(2500);
-  const afterWeight = await page.locator('main').first().innerText();
+  const afterWeight = await waitFor(
+    () => page.locator('main').first().innerText(),
+    (t) => /66\.5\s*kg/.test(t));
   check('weight recorded and reflected', /66\.5\s*kg/.test(afterWeight), afterWeight.match(/[\d.]+ kg[^\n]*/)?.[0] ?? 'not found');
 
   console.log('\n=== 8. Profile shows the SAME plan ===');
@@ -254,7 +272,12 @@ try {
   await page.locator('input[autocomplete="username"]').fill(USER_A.username);
   await page.locator('input[autocomplete="current-password"]').fill(USER_A.password);
   await clickText(page, /sign in/i);
-  await page.waitForTimeout(3000);
+  await page.waitForURL(/\/dashboard/, { timeout: 40000 }).catch(() => {});
+  // Wait for the metric cards to actually carry the restored plan.
+  await waitFor(
+    () => page.locator('main').first().innerText().catch(() => ''),
+    (t) => /\d[\d,]*\s*\/\s*[\d,]+\s*kcal/.test(t),
+    { timeout: 40000 });
   await shot(page, '08a-relogin-state');
   const relogged = await readDashboard(page);
   check('plan survives logout/login', relogged.caloriesTarget === a.caloriesTarget,
