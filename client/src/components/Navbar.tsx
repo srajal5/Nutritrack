@@ -1,4 +1,5 @@
 import { Link, useLocation } from "wouter";
+import BrandLogo from "@/components/BrandLogo";
 import { useAuth } from "../hooks/use-auth";
 import { 
   LayoutDashboard, 
@@ -39,12 +40,11 @@ export default function Navbar() {
     <nav aria-label="Main navigation" className="sticky top-0 z-50 w-full backdrop-blur-md bg-background/80 border-b border-border shadow-sm">
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
         
-        {/* Desktop & Mobile Header Title */}
+        {/* Brand — the gradient-clipped text this replaced rendered as an
+            unreadable colour smear and omitted the "AI" half of the name. */}
         <div className="flex items-center gap-2">
-          <Link href="/dashboard" className="flex items-center gap-2">
-            <span className="font-bold text-xl bg-clip-text text-transparent bg-gradient-to-r from-primary to-purple-500 cursor-pointer">
-              NutriTrack
-            </span>
+          <Link href="/dashboard" aria-label="NutriTrackAI home" className="flex items-center">
+            <BrandLogo size="sm" />
           </Link>
         </div>
 

@@ -3,6 +3,7 @@ import { Link } from 'wouter';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { useAuth } from '@/hooks/use-auth';
+import BrandLogo from '@/components/BrandLogo';
 
 /**
  * Public (signed-out) site navigation.
@@ -23,10 +24,7 @@ const Header = () => {
     <header className="sticky top-0 glass border-b border-border shadow-sm z-10 theme-transition">
       <div className="container mx-auto px-4 py-4 flex justify-between items-center">
         <div className="flex items-center">
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-primary" viewBox="0 0 20 20" fill="currentColor">
-            <path fillRule="evenodd" d="M14.243 5.757a6 6 0 10-.986 9.284 1 1 0 111.087 1.678A8 8 0 1118 10a3 3 0 01-3.757-4.243z" clipRule="evenodd" />
-          </svg>
-          <h1 className="font-heading font-bold text-2xl ml-2 text-foreground">NutriTrack<span className="text-primary">AI</span></h1>
+          <BrandLogo />
         </div>
 
         <nav className="hidden md:flex space-x-6">
