@@ -45,9 +45,7 @@ app.use((_req, res, next) => {
   next();
 });
 
-// NOTE: CORS is configured in one place only — setupAuth() in server/auth.ts.
-// A second hand-rolled layer here used to answer preflights before that ran,
-// which meant the two could disagree about which origins are allowed.
+
 
 app.use((req, res, next) => {
   const start = Date.now();
