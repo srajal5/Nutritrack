@@ -10,29 +10,26 @@ import mongoose from 'mongoose';
 import helmet from 'helmet';
 import config from './config.js';
 
-// Log environment variables (without sensitive values)
+
 console.log('Environment:', config.env);
 console.log('OpenRouter API Key configured:', !!config.ai.apiKey);
 
 const app = express();
-// In production `undefined` meant "use helmet's default CSP", which allows no
-// external origins at all — so the avatar service and Google Fonts were blocked
-// on the built app. Declare the policy explicitly and keep it in step with the
-// dev policy in server/vite.ts.
+
 app.use(helmet({
   contentSecurityPolicy: config.isProduction
     ? {
-        directives: {
-          defaultSrc: ["'self'"],
-          scriptSrc: ["'self'"],
-          styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
-          fontSrc: ["'self'", 'data:', 'https://fonts.gstatic.com'],
-          imgSrc: ["'self'", 'data:', 'blob:', 'https://api.dicebear.com'],
-          connectSrc: ["'self'"],
-          objectSrc: ["'none'"],
-          frameAncestors: ["'none'"],
-        },
-      }
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'"],
+        styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+        fontSrc: ["'self'", 'data:', 'https://fonts.gstatic.com'],
+        imgSrc: ["'self'", 'data:', 'blob:', 'https://api.dicebear.com'],
+        connectSrc: ["'self'"],
+        objectSrc: ["'none'"],
+        frameAncestors: ["'none'"],
+      },
+    }
     : false,
 }));
 app.disable('x-powered-by');
@@ -86,12 +83,12 @@ app.use((req, res, next) => {
   try {
     // Connect to MongoDB first
     await connectDB();
-    
+
     // Verify MongoDB connection
     if (mongoose.connection.readyState !== 1) {
       throw new Error('MongoDB connection failed');
     }
-    
+
 
     // Verify storage instance is properly initialized
     if (!storage || typeof storage.getUserByUsername !== 'function') {
